@@ -14,7 +14,7 @@ Este serviço apesar de ser gratuito possui algumas limitações mostradas no fi
 ## Como instalar
 
 ```
-npm i cnpj-ws --save
+npm i consulta-cnpj-ws --save
 ```
 
 ## Como utilizar para fazer busca de um CNPJ
