@@ -1,5 +1,5 @@
 # Sobre o CNPJ-WS
-
+[![Build Status](https://travis-ci.com/jos3duardo/cnpj-ws.svg?branch=master)](https://travis-ci.com/jos3duardo/cnpj-ws)
 [![npm](https://img.shields.io/npm/l/express.svg)](https://travis-ci.com/jos3duardo/cnpj-ws)
 [![npm downloads](https://img.shields.io/npm/dm/cnpj-ws.svg)](https://www.npmjs.com/package/cnpj-ws)<br />
 
