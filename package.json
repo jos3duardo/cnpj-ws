@@ -1,6 +1,6 @@
 {
   "name": "consulta-cnpj-ws",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
   "main": "index.js",
   "engines": {
@@ -18,7 +18,8 @@
     "Receita WS",
     "webservice",
     "consulta cnpj",
-    "pesquisa cnpjs"
+    "pesquisa cnpj",
+    "consulta cnpj receita"
   ],
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
