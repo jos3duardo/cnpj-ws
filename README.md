@@ -1,4 +1,4 @@
-# Sobre o CNPJ-WS
+# Sobre o CONSULTA-CNPJ-WS
 [![Build Status](https://travis-ci.com/jos3duardo/cnpj-ws.svg?branch=master)](https://travis-ci.com/jos3duardo/cnpj-ws)
 [![npm](https://img.shields.io/npm/l/express.svg)](https://travis-ci.com/jos3duardo/cnpj-ws)
 [![npm downloads](https://img.shields.io/npm/dm/cnpj-ws.svg)](https://www.npmjs.com/package/cnpj-ws)<br />
@@ -20,7 +20,7 @@ npm i cnpj-ws --save
 ## Como utilizar para fazer busca de um CNPJ
 
 ```javascript
-let CNPJ = require('cnpj-ws');
+let CNPJ = require('consulta-cnpj-ws');
 let cnpj = new CNPJ();
 
 cnpj.consultaCNPJ({cnpj: 27865757000105 })
