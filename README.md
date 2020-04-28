@@ -177,18 +177,7 @@ cnpj.consultaCNPJ({cnpj: 27865757000105 })
   }
 }
 ```
-
- 
-
-## Planos
-
-Descrição                                   | Básico | Bronze |	Prata	|   Ouro	| Diamante
---------------------------------------------|--------|--------|---------|-----------|-----------
-Limite de Consultas por Minuto              |	3	 |  10    |	  20	| Ilimitado |	Ilimitado
-Limite de Consultas por Mês	                | 130.000| 150.000|	300.000 |	600.000	|  +1.200.000
-Limite de Consultas por Mês em Tempo Real(1)|    x	 |	  x   | 15.000  |	30.000	|  +60.000
-Planos Mensais(2)                           |Gratuito|R$99,00 | R$149,00| R$249,00  |  Sob Consulta
-
+## Tipos de retorno
 
 Uma resposta típica é composta por uma matriz em JSON composta pelos seguintes campos:
 
@@ -234,3 +223,12 @@ qsa.pais_origem|	string|	País de origem do sócio. Disponível apenas para sóc
 qsa.nome_rep_legal|	string|	Nome do representante legal. Disponível apenas para sócios com representantes.
 qsa.qual_rep_legal|	string|	Qualificação do representante legal. Disponível apenas para sócios com representantes.
 extra	|objeto	|Campo reservado para uso futuro.
+
+## Planos
+
+Descrição                                   | Básico | Bronze |	Prata	|   Ouro	| Diamante
+--------------------------------------------|--------|--------|---------|-----------|-----------
+Limite de Consultas por Minuto              |	3	 |  10    |	  20	| Ilimitado |	Ilimitado
+Limite de Consultas por Mês	                | 130.000| 150.000|	300.000 |	600.000	|  +1.200.000
+Limite de Consultas por Mês em Tempo Real(1)|    x	 |	  x   | 15.000  |	30.000	|  +60.000
+Planos Mensais(2)                           |Gratuito|R$99,00 | R$149,00| R$249,00  |  Sob Consulta
