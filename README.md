@@ -1,19 +1,20 @@
+# Sobre o CNPJ-WS
 
-[![npm](https://img.shields.io/npm/l/express.svg)](https://travis-ci.com/jos3duardo/node-cep-correios)
-[![npm downloads](https://img.shields.io/npm/dm/node-cep-correios.svg)](https://www.npmjs.com/package/node-cep-correios)<br />
+[![npm](https://img.shields.io/npm/l/express.svg)](https://travis-ci.com/jos3duardo/cnpj-ws)
+[![npm downloads](https://img.shields.io/npm/dm/cnpj-ws.svg)](https://www.npmjs.com/package/cnpj-ws)<br />
 
-# cnpj-ws
-Package node para consulta de cnpj
+Este é um pacote que permite consultas gratuitas de CNPJ no site da Receita Federal Brasileira a partir do uso [ desta api](https://receitaws.com.br/api).  
+Este serviço apesar de ser gratuito possui algumas limitações mostradas no final desta pagina e também [neste link](https://receitaws.com.br/pricing).
 
- # Importante
+### Importante
  
-* Não sou responsavel pelo fornecimentos das informações
+* Não sou responsável pelo fornecimentos das informações das consultas.
 * Apenas estou fornecendo uma forma facilitada de fazer as consultas em suas aplicações por meio deste pacote
 
 ## Como instalar
 
 ```
-npm install cnpj-ws --save
+npm i cnpj-ws --save
 ```
 
 ## Como utilizar para fazer busca de um CNPJ
@@ -22,7 +23,7 @@ npm install cnpj-ws --save
 let CNPJ = require('cnpj-ws');
 let cnpj = new CNPJ();
 
-cnpj.consultaCNPJ({cnpj:'27865757000105'})
+cnpj.consultaCNPJ({cnpj: 27865757000105 })
 .then(result => {
     console.log(result)
 })
@@ -176,12 +177,8 @@ cnpj.consultaCNPJ({cnpj:'27865757000105'})
   }
 }
 ```
-## Informações
 
-Este é um pacote que permite consultas gratuitas de CNPJ no site da Receita Federal Brasileira a partir do uso [ desta api](https://receitaws.com.br/api).  
-Este serviço apesar de ser gratuito possui algumas limitações mostradas logo abaixo
  
-
 
 ## Planos
 
