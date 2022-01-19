@@ -10,7 +10,7 @@ Este serviço apesar de ser gratuito possui algumas limitações mostradas no fi
  
 * Não sou responsável pelo fornecimentos das informações das consultas.
 * Apenas estou fornecendo uma forma facilitada de fazer as consultas em suas aplicações por meio deste pacote
-* Créditos ao autor (José Eduardo)[https://github.com/jos3duardo/cnpj-ws]
+* Créditos ao autor [José Eduardo](https://github.com/jos3duardo/cnpj-ws)
 
 ## Como instalar
 
