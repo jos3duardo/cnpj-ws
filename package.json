@@ -1,6 +1,6 @@
 {
-  "name": "consulta-cnpj-ws",
-  "version": "2.0.0",
+  "name": "cnpj-receita-federal",
+  "version": "2.0.1",
   "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
   "main": "index.js",
   "engines": {
@@ -21,13 +21,14 @@
     "pesquisa cnpj",
     "consulta cnpj receita"
   ],
-  "author": "José Eduardo <jos3duardolopes@gmail.com>",
+  "original-author": "José Eduardo <jos3duardolopes@gmail.com>",
+  "author": "Maurício Witter <rwietter@zohoomail.com>",
   "license": "MIT",
   "dependencies": {
     "request": "^2.67.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jos3duardo/cnpj-ws.git"
+    "url": "https://github.com/rwietter/cnpj-ws"
   }
 }

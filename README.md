@@ -10,20 +10,21 @@ Este serviço apesar de ser gratuito possui algumas limitações mostradas no fi
  
 * Não sou responsável pelo fornecimentos das informações das consultas.
 * Apenas estou fornecendo uma forma facilitada de fazer as consultas em suas aplicações por meio deste pacote
+* Créditos ao autor (José Eduardo)[https://github.com/jos3duardo/cnpj-ws]
 
 ## Como instalar
 
 ```
-npm i consulta-cnpj-ws --save
+npm i cnpj-receita-federal --save
 ```
 
 ## Como utilizar para fazer busca de um CNPJ
 
 ```javascript
-let CNPJ = require('consulta-cnpj-ws');
+let CNPJ = require('cnpj-receita-federal');
 let cnpj = new CNPJ();
 
-cnpj.consultaCNPJ({cnpj: 27865757000105 })
+cnpj.consultaCNPJ({ cnpj: 27865757000105 })
 .then(result => {
     console.log(result)
 })
