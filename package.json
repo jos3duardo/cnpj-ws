@@ -24,7 +24,7 @@
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "request": "^2.67.0"
+    "axios": "^1.6.8"
   },
   "repository": {
     "type": "git",
