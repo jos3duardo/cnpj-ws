@@ -1,1 +1,1 @@
-module.exports = require('./lib/cnpj');
+module.exports = require("./lib/cnpj");
