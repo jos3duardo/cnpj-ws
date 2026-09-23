@@ -9,6 +9,7 @@
     "index.d.ts",
     "lib/",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
