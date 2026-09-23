@@ -76,7 +76,11 @@ O nome no npm (`consulta-cnpj-ws`) difere do nome do repositório (`cnpj-ws`).
 
 `package.json` tem whitelist `files`: o tarball leva `index.js`, `index.d.ts`, `lib/`, `README.md`, `CHANGELOG.md` e `LICENSE`. Arquivo novo que precise ir junto tem que ser adicionado lá — e link de README para arquivo fora dessa lista quebra na página do npm.
 
-Bump de versão e `npm publish` são atos manuais. Não executar sem pedido explícito.
+Publicação sai por `.github/workflows/release.yml`: empurrar uma tag `v<versão>` dispara a suíte do CI e, se passar, publica via trusted publishing (OIDC do GitHub Actions). Não há token do npm no repositório, e `npm publish` local não é o caminho.
+
+Consequência prática: **a tag é o gatilho do release**. Não criar nem empurrar tag sem pedido explícito — é o equivalente a publicar. Bump de versão também segue manual e explícito; o workflow aborta se a tag divergir da versão do `package.json`.
+
+Versão com hífen (`v4.0.0-beta.1`) vai para o dist-tag `next`, não para `latest`.
 
 `CHANGELOG.md` é a fonte de verdade das mudanças. `ATUALIZACOES.md` é documento legado da migração 2.x→3.0, mantido por histórico — não atualizar.
 

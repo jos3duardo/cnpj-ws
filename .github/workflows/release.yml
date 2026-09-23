@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    # v[0-9]* em vez de v*: tag como "vault-snapshot" não dispara um release fadado a falhar.
+    tags: ["v[0-9]*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # A tag pode apontar para qualquer commit, inclusive um que o ci.yml nunca viu.
+  # Como publicar é irreversível, o release roda a suíte do CI em vez de confiar que ela passou.
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+
+    # Trusted publishing: o npm confia neste repositório via OIDC, sem token no registry.
+    # Só este job precisa emitir o token; a matriz de teste roda sem ele.
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      # A tag é o que dispara o release: divergir do package.json publicaria a versão errada.
+      - name: Confere se a tag bate com a versão do package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag $tag difere de package.json $pkg" >&2
+            exit 1
+          fi
+
+      # Trusted publishing exige npm >= 11.5.1; o npm que acompanha o Node 22 é anterior.
+      - run: npm install -g "npm@^11.5.1"
+
+      # Sem build nem binário nativo: nenhuma dependência aqui precisa de postinstall.
+      - run: npm ci --ignore-scripts
+
+      # Prerelease não pode virar `latest`: quem roda `npm i consulta-cnpj-ws` pegaria a beta.
+      - name: Publica
+        run: |
+          versao="${GITHUB_REF_NAME#v}"
+          case "$versao" in
+            *-*) npm publish --tag next ;;
+            *)   npm publish ;;
+          esac
