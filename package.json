@@ -1,25 +1,37 @@
 {
   "name": "consulta-cnpj-ws",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts"
   },
   "jest": {
     "testMatch": [
-      "**/__tests__/**/*.js"
+      "**/__tests__/**/*.test.js"
     ],
     "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/test.js",
-      "/consultaCnpj.js"
-    ]
+      "/node_modules/"
+    ],
+    "clearMocks": true
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jos3duardo/cnpj-ws.git"
   },
   "bugs": {
     "url": "https://github.com/jos3duardo/cnpj-ws"
@@ -65,13 +77,10 @@
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8"
+    "axios": "^1.18.0"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jos3duardo/cnpj-ws.git"
+    "jest": "^29.7.0",
+    "typescript": "^5.9.3"
   }
 }
