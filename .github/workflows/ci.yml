@@ -4,6 +4,8 @@ on:
   push:
     branches: [master]
   pull_request:
+  # O release.yml chama esta mesma suíte, para a matriz do gate nunca divergir da do CI.
+  workflow_call:
 
 permissions:
   contents: read
