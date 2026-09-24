@@ -56,7 +56,10 @@ jobs:
       # O npm engole a falha do OIDC e segue para o PUT, que responde 404 sem dizer a causa.
       # O motivo real sai em `verbose` ("Failed token exchange request with body message").
       # --dry-run passa pela mesma troca de token (oidc() roda em publish.js:147, fora do
-      # guarda de dry-run), então o ensaio exercita exatamente o que está quebrado.
+      # guarda de dry-run), então o ensaio prova que o trusted publisher bate com este workflow.
+      # Não prova que ele pode publicar: o dry-run nunca faz o PUT. Com o publish desabilitado
+      # no trusted publisher, o ensaio passa e o release real toma 403 "OIDC permission denied
+      # for this action".
       - name: Ensaia a publicação, sem publicar
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -67,7 +70,7 @@ jobs:
           npm publish --dry-run --tag next --loglevel verbose 2>&1 | tee ensaio.log || true
 
           if grep -q "Successfully retrieved and set token" ensaio.log; then
-            echo "Troca de token OIDC OK: o trusted publishing está configurado."
+            echo "Troca de token OIDC OK. Não testa o PUT: o publish ainda precisa estar habilitado no trusted publisher."
           else
             echo "::error::A troca de token OIDC falhou — o publish real daria 404."
             grep -i "oidc" ensaio.log || echo "(nenhuma linha de oidc no log)"
