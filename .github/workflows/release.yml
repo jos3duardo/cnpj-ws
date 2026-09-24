@@ -4,6 +4,8 @@ on:
   push:
     # v[0-9]* em vez de v*: tag como "vault-snapshot" não dispara um release fadado a falhar.
     tags: ["v[0-9]*"]
+  # Ensaio manual: exercita a troca do token OIDC sem publicar e sem queimar uma tag.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,7 +36,9 @@ jobs:
           cache: npm
 
       # A tag é o que dispara o release: divergir do package.json publicaria a versão errada.
+      # No ensaio não há tag: GITHUB_REF_NAME seria o nome do branch.
       - name: Confere se a tag bate com a versão do package.json
+        if: github.event_name == 'push'
         run: |
           tag="${GITHUB_REF_NAME#v}"
           pkg="$(node -p "require('./package.json').version")"
@@ -49,11 +53,33 @@ jobs:
       # Sem build nem binário nativo: nenhuma dependência aqui precisa de postinstall.
       - run: npm ci --ignore-scripts
 
+      # O npm engole a falha do OIDC e segue para o PUT, que responde 404 sem dizer a causa.
+      # O motivo real sai em `verbose` ("Failed token exchange request with body message").
+      # --dry-run passa pela mesma troca de token (oidc() roda em publish.js:147, fora do
+      # guarda de dry-run), então o ensaio exercita exatamente o que está quebrado.
+      - name: Ensaia a publicação, sem publicar
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # O exit code do dry-run não serve de veredito: oidc() nunca lança, e o dry-run
+          # falha de propósito quando a versão do package.json já está publicada. Quem diz
+          # se o trusted publishing funciona é a linha do log — por isso o `|| true`.
+          # --tag next: versão prerelease aborta em publish.js:128, antes da troca de token.
+          npm publish --dry-run --tag next --loglevel verbose 2>&1 | tee ensaio.log || true
+
+          if grep -q "Successfully retrieved and set token" ensaio.log; then
+            echo "Troca de token OIDC OK: o trusted publishing está configurado."
+          else
+            echo "::error::A troca de token OIDC falhou — o publish real daria 404."
+            grep -i "oidc" ensaio.log || echo "(nenhuma linha de oidc no log)"
+            exit 1
+          fi
+
       # Prerelease não pode virar `latest`: quem roda `npm i consulta-cnpj-ws` pegaria a beta.
       - name: Publica
+        if: github.event_name == 'push'
         run: |
           versao="${GITHUB_REF_NAME#v}"
           case "$versao" in
-            *-*) npm publish --tag next ;;
-            *)   npm publish ;;
+            *-*) npm publish --tag next --loglevel verbose ;;
+            *)   npm publish --loglevel verbose ;;
           esac
