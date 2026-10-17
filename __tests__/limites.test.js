@@ -91,5 +91,26 @@ test("timeout interrompe a consulta", async () => {
     .consultar(PETROBRAS)
     .catch((e) => e);
 
-  expect(erro.code).toBe("ECONNABORTED");
+  // Timeout do axios e signal disparam juntos; qualquer um dos dois serve.
+  expect(["ECONNABORTED", "ERR_CANCELED"]).toContain(erro.code);
+});
+
+test("timeout é prazo total: corpo pingado byte a byte não o estende", async () => {
+  let intervalo;
+  rota = (req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.write('{"cnpj":"');
+    intervalo = setInterval(() => res.write("x"), 20);
+    req.on("close", () => clearInterval(intervalo));
+  };
+
+  const inicio = Date.now();
+  const erro = await cliente({ timeout: 150 })
+    .consultar(PETROBRAS)
+    .catch((e) => e);
+  clearInterval(intervalo);
+
+  expect(erro).toBeInstanceOf(Error);
+  expect(erro.code).toBe("ERR_CANCELED");
+  expect(Date.now() - inicio).toBeLessThan(1000);
 });

@@ -23,7 +23,7 @@ declare class Cnpj {
 }
 
 declare namespace Cnpj {
-  export type Consulta = (cnpj: string | number) => Promise<Empresa>;
+  export type Consulta = (cnpj: string | number | bigint) => Promise<Empresa>;
 
   export interface Telefone {
     ddd: string;

@@ -21,6 +21,7 @@ const OPCOES_AXIOS = {
   maxContentLength: 256 * 1024,
   maxBodyLength: 256 * 1024,
   maxRedirects: 0,
+  signal: expect.any(AbortSignal),
 };
 
 const RESPOSTA = {
@@ -72,11 +73,18 @@ describe("Construtor", () => {
       maxContentLength: 1000,
       maxBodyLength: 1000,
       maxRedirects: 2,
+      signal: expect.any(AbortSignal),
     });
   });
 
   test("timeout 0 é respeitado (axios trata como sem timeout)", () => {
     expect(new Cnpj({ timeout: 0 }).timeout).toBe(0);
+  });
+
+  test("timeout 0 não cria signal de prazo total", async () => {
+    await new Cnpj({ timeout: 0 }).consultar(PETROBRAS);
+
+    expect(axios.get.mock.calls[0][1]).not.toHaveProperty("signal");
   });
 
   test("url sem o marcador {CNPJ} falha na construção", () => {
@@ -135,7 +143,6 @@ describe("consultar - validação", () => {
     ["NaN", NaN],
     ["dígitos de menos", 12345],
     ["dígitos demais", "330001670001010"],
-    ["letra misturada a CNPJ numérico", "33000167000101X"],
     ["letra no dígito verificador", "12ABC34501DE3A"],
     ["zero", 0],
     ["false", false],
@@ -233,6 +240,28 @@ describe("consultar - CNPJ alfanumérico", () => {
   });
 });
 
+describe("consultar - compatibilidade com a 3.1.0", () => {
+  test.each([
+    ["letra solta junto ao CNPJ numérico", "33000167000101X"],
+    ["rótulo antes do CNPJ", "CNPJ: 33.000.167/0001-01"],
+  ])("%s ainda consulta pelos dígitos", async (_rotulo, entrada) => {
+    await cnpj.consultar(entrada);
+
+    expect(axios.get).toHaveBeenCalledWith(
+      `https://api.opencnpj.org/${PETROBRAS}`,
+      OPCOES_AXIOS,
+    );
+  });
+
+  test("forma alfanumérica válida tem precedência sobre os dígitos", async () => {
+    await cnpj.consultar("12.ABC.345/01DE-35");
+
+    expect(axios.get.mock.calls[0][0]).toBe(
+      `https://api.opencnpj.org/${ALFANUMERICO}`,
+    );
+  });
+});
+
 describe("normalizarCnpj", () => {
   test.each([
     ["33.000.167/0001-01", PETROBRAS],
@@ -240,6 +269,7 @@ describe("normalizarCnpj", () => {
     ["12.abc.345/01de-35", ALFANUMERICO],
     [" 12 ABC 345 01DE 35 ", ALFANUMERICO],
     ["--//..", ""],
+    ["12ABC345ß01DE35", ALFANUMERICO],
   ])("%p vira %p", (entrada, esperado) => {
     expect(normalizarCnpj(entrada)).toBe(esperado);
   });
