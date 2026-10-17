@@ -56,7 +56,7 @@ Falha de rede ou timeout propaga o erro original do axios, que não tem `respons
 
 ### Normalização
 
-`normalizarCnpj()`: `String(cnpj).toUpperCase().replace(/[^0-9A-Z]/g, "")`, seguido em `_preparar` da checagem de 14 caracteres e do formato `/^[0-9A-Z]{12}[0-9]{2}$/` (CNPJ alfanumérico da Receita, desde jul/2026; o numérico é caso particular). Três coisas dependem disso e não são óbvias:
+`normalizarCnpj()`: `String(cnpj).replace(/[^0-9A-Za-z]/g, "").toUpperCase()` — filtro antes do `toUpperCase`, senão `ß` vira `SS`. Em `_preparar` vem a checagem do formato `/^[0-9A-Z]{12}[0-9]{2}$/` (CNPJ alfanumérico da Receita, desde jul/2026; o numérico é caso particular) e de 14 caracteres. Se a forma alfanumérica não fecha o formato mas os dígitos somam 14, valem só os dígitos: é o que mantém aceita toda entrada da 3.1.0 (`"CNPJ: 33.000.167/0001-01"`). Três coisas dependem disso e não são óbvias:
 
 1. O `String()` corrige um bug histórico (`arg.cnpj.replace is not a function`) quando o CNPJ vem como número. Só string, número e bigint passam por ele — `String(null)` viraria `"NULL"`, que agora é alfanumérico.
 2. O `replace(/[^0-9A-Z]/g, "")` **é o que mantém a URL segura** — sem ele, entrada hostil controlaria o path. A checagem de tamanho evita que entrada vazia vire uma requisição à raiz da API.
@@ -66,14 +66,14 @@ DV: módulo 11 com valor `charCodeAt - 48` por caractere (dígito mantém o valo
 
 ### Transporte
 
-`axios.get` sai com `timeout` (10 s), `maxContentLength`/`maxBodyLength` (256 KiB) e `maxRedirects: 0`, todos configuráveis no construtor. Resposta grande demais propaga o erro do axios; redirect vira `ErroConsulta` com o status 3xx.
+`axios.get` sai com `timeout` (10 s), `signal: AbortSignal.timeout(timeout)` (o `timeout` do axios é ociosidade do socket; o signal é o prazo total), `maxContentLength`/`maxBodyLength` (256 KiB) e `maxRedirects: 0`, todos configuráveis no construtor. Resposta grande demais propaga o erro do axios; redirect vira `ErroConsulta` com o status 3xx.
 
 ## Testes
 
 Suítes deliberadamente separadas:
 
 - `__tests__/cnpj.test.js` — unitário, `jest.mock("axios")`. É o que roda no `npm test` e no CI. Teste novo entra aqui.
-- `__tests__/limites.test.js` — axios de verdade contra servidor HTTP local (sem internet): tamanho de resposta, redirect, timeout. Também roda no `npm test`.
+- `__tests__/limites.test.js` — axios de verdade contra servidor HTTP local (sem internet): tamanho de resposta, redirect, timeout (inclusive corpo pingado). Também roda no `npm test`.
 - `__tests__/integracao/` — bate na API real, com `jest.integracao.config.js` próprio (`testTimeout` e `maxWorkers: 1` ficam lá). Fora do `npm test` porque depende de rede e do cadastro da Receita, que muda sem aviso.
 
 A config inline do Jest no `package.json` ignora `/__tests__/integracao/`. Cuidado ao montar scripts do Jest por linha de comando: opções de array como `--testPathIgnorePatterns` engolem o argumento posicional seguinte — daí o arquivo de config separado em vez de flags.

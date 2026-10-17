@@ -5,7 +5,8 @@ versionamento conforme [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [3.2.0] - 2026-10-17
 
-Release aditivo: nenhuma API existente foi removida.
+Release aditivo: nenhuma API existente foi removida e toda entrada aceita pela
+3.1.0 continua aceita, consultando o mesmo CNPJ.
 
 ### Adicionado
 
@@ -19,8 +20,9 @@ Release aditivo: nenhuma API existente foi removida.
   alfanuméricos, pelo módulo 11 com valor ASCII − 48 por caractere, conforme as
   [Perguntas e Respostas da Receita](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/cnpj/cnpj-alfanumerico.pdf)
   (pergunta 14). Recusa sequência de um caractere só (`00000000000000`).
-- `normalizarCnpj(cnpj)`: maiúsculas e só `[0-9A-Z]`; entrada que não é string,
-  número ou bigint vira `""`.
+- `normalizarCnpj(cnpj)`: remove tudo fora de `[0-9A-Za-z]` e passa para
+  maiúsculas, nessa ordem (letra Unicode como `ß` não vira `SS`); entrada que não
+  é string, número ou bigint vira `""`.
 - Limite de tamanho da resposta: `maxContentLength` e `maxBodyLength` de 256 KiB
   por padrão, configuráveis com `new Cnpj({ maxContentLength })` (`-1` desliga).
 - Redirecionamentos não são seguidos (`maxRedirects: 0`, configurável): um 3xx
@@ -31,19 +33,33 @@ Release aditivo: nenhuma API existente foi removida.
 
 ### Alterado
 
-- Letras na entrada deixaram de ser descartadas: passam a contar como parte do
-  CNPJ. Uma entrada como `"33000167000101X"`, que antes virava `33000167000101`
-  e era consultada, agora é recusada com `ErroValidacao` (15 caracteres).
+- Timeout passa a ser **prazo total** da consulta: além do `timeout` do axios
+  (ociosidade do socket), a requisição sai com `AbortSignal.timeout(timeout)`.
+  Um corpo enviado byte a byte não segura mais a consulta além do prazo; nesse
+  caso o erro original do axios tem `code: "ERR_CANCELED"`. `timeout: 0` continua
+  desligando os dois.
 - A mensagem de tamanho inválido diz "caracteres" em vez de "dígitos".
 - Letra nas duas últimas posições é recusada com `ErroValidacao` específico
   ("os dois últimos caracteres (dígitos verificadores) devem ser numéricos").
+- Tipos: `consultar()` aceita `bigint`, como o runtime já aceitava.
+- `release.yml`: o job de publicação não usa mais `cache: npm`.
+
+### Compatibilidade
+
+Toda entrada aceita pela 3.1.0 continua aceita e consultando o mesmo CNPJ.
+Quando a forma alfanumérica não fecha o formato mas os dígitos somam 14 —
+`"33000167000101X"`, `"CNPJ: 33.000.167/0001-01"` —, valem só os dígitos, como
+antes. Letras só contam quando formam um CNPJ alfanumérico de 14 caracteres.
 
 ### Notas de comportamento
 
 `consultar()` confere o **formato**, não o dígito verificador — como na 3.1.0,
 um CNPJ de 14 caracteres com DV errado vai à API e volta como `ErroConsulta`
-404. Para recusar localmente, chame `validarCnpj()` antes. Fazer isso dentro de
-`consultar()` mudaria o erro devolvido e fica para a 4.0.0.
+404. Para recusar localmente, chame `validarCnpj()` antes.
+
+**Planejado para a 4.0.0:** `consultar()` passará a conferir o dígito
+verificador e a rejeitar DV inválido com `ErroValidacao`, sem chamar a API —
+hoje esse caso volta como `ErroConsulta` 404.
 
 Com o limite de tamanho, uma resposta acima de 256 KiB rejeita com o erro
 original do axios (`maxContentLength size of ... exceeded`), como as demais

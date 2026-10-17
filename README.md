@@ -53,7 +53,8 @@ consultar("12abc34501de35"); // minúsculas são convertidas
 ```
 
 Entrada que não resulte em exatamente 14 caracteres — 12 em `[0-9A-Z]` mais 2
-dígitos verificadores numéricos — é rejeitada localmente, sem gastar uma chamada
+dígitos verificadores numéricos, ou 14 dígitos depois de descartar o resto, como
+na 3.1.0 — é rejeitada localmente, sem gastar uma chamada
 à API. O dígito verificador **não** é conferido por `consultar()`; use
 `validarCnpj()` para isso.
 
@@ -93,7 +94,7 @@ cliente.consultar("33000167000101").then((empresa) => {
 
 | Opção     | Padrão                             | Descrição                            |
 | --------- | ---------------------------------- | ------------------------------------ |
-| `timeout` | `10000`                            | Timeout da requisição em ms; `0` desliga |
+| `timeout` | `10000`                            | Prazo total da consulta em ms; `0` desliga |
 | `url`     | `https://api.opencnpj.org/{CNPJ}`  | Template de URL; precisa conter `{CNPJ}` |
 | `maxContentLength` | `262144` (256 KiB)        | Tamanho máximo da resposta; `-1` desliga |
 | `maxRedirects` | `0`                           | Redirecionamentos seguidos; 3xx vira `ErroConsulta` |
