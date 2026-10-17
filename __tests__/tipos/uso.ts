@@ -32,4 +32,12 @@ function tratar(erro: unknown): string | null {
   return null;
 }
 
-export { direto, comOpcoes, legado, viaNomeado, tratar };
+// 6. CNPJ alfanumérico: validar e normalizar antes de consultar.
+async function alfanumerico(entrada: string): Promise<string | null> {
+  if (!Cnpj.validarCnpj(entrada)) return null;
+  const normalizado: string = Cnpj.normalizarCnpj(entrada);
+  const empresa = await Cnpj.consultar(normalizado);
+  return empresa.cnpj;
+}
+
+export { direto, comOpcoes, legado, viaNomeado, tratar, alfanumerico };

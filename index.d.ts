@@ -8,7 +8,10 @@ declare class Cnpj {
 
   constructor(opcoes?: Cnpj.OpcoesCnpj);
 
-  /** Consulta um CNPJ. Aceita string, número, com ou sem formatação. */
+  /**
+   * Consulta um CNPJ, numérico ou alfanumérico. Aceita string ou número, com
+   * ou sem formatação. Confere o formato, não o dígito verificador.
+   */
   consultar: Cnpj.Consulta;
 
   /** @deprecated desde 3.1.0 — use `consultar()`. Será removido na 4.0.0. */
@@ -85,6 +88,18 @@ declare namespace Cnpj {
 
     constructor(status: number, mensagem: string);
   }
+
+  /**
+   * Normaliza um CNPJ numérico ou alfanumérico: maiúsculas, só `[0-9A-Z]`.
+   * Não valida; entrada que não é string nem número vira `""`.
+   */
+  export function normalizarCnpj(cnpj: string | number | bigint): string;
+
+  /**
+   * `true` se o CNPJ, numérico ou alfanumérico, tem formato e dígitos
+   * verificadores válidos (módulo 11 da Receita). Aceita formatação.
+   */
+  export function validarCnpj(cnpj: string | number | bigint): boolean;
 
   /** Consulta um CNPJ usando a instância padrão. */
   export const consultar: Consulta;

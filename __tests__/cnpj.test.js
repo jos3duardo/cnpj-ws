@@ -1,12 +1,22 @@
 jest.mock("axios");
 
 const axios = require("axios");
-const { Cnpj, ErroCnpj, ErroValidacao, ErroConsulta } = require("../lib/cnpj");
+const {
+  Cnpj,
+  ErroCnpj,
+  ErroValidacao,
+  ErroConsulta,
+  normalizarCnpj,
+  validarCnpj,
+} = require("../lib/cnpj");
 const pacote = require("../index");
 
 const PETROBRAS = "33000167000101";
+// Exemplo oficial da Receita (Perguntas e Respostas do CNPJ alfanumérico, p. 14).
+const ALFANUMERICO = "12ABC34501DE35";
 const URL_PADRAO = "https://api.opencnpj.org/{CNPJ}";
 const TIMEOUT_PADRAO = 10000;
+const OPCOES_AXIOS = { timeout: TIMEOUT_PADRAO };
 
 const RESPOSTA = {
   cnpj: PETROBRAS,
@@ -59,7 +69,7 @@ describe("Construtor", () => {
 
     expect(axios.get).toHaveBeenCalledWith(
       `https://exemplo.test/x/${PETROBRAS}.json`,
-      { timeout: TIMEOUT_PADRAO },
+      OPCOES_AXIOS,
     );
   });
 });
@@ -75,7 +85,7 @@ describe("consultar - normalização da entrada", () => {
 
     expect(axios.get).toHaveBeenCalledWith(
       `https://api.opencnpj.org/${PETROBRAS}`,
-      { timeout: TIMEOUT_PADRAO },
+      OPCOES_AXIOS,
     );
   });
 
@@ -102,6 +112,8 @@ describe("consultar - validação", () => {
     ["NaN", NaN],
     ["dígitos de menos", 12345],
     ["dígitos demais", "330001670001010"],
+    ["letra misturada a CNPJ numérico", "33000167000101X"],
+    ["letra no dígito verificador", "12ABC34501DE3A"],
     ["zero", 0],
     ["false", false],
   ])("rejeita %s sem chamar a API", async (_rotulo, entrada) => {
@@ -165,6 +177,83 @@ describe("consultar - erros da API", () => {
   });
 });
 
+describe("consultar - CNPJ alfanumérico", () => {
+  test.each([
+    ["sem formatação", ALFANUMERICO],
+    ["formatado", "12.ABC.345/01DE-35"],
+    ["minúsculo", "12.abc.345/01de-35"],
+  ])("consulta %s com o valor normalizado", async (_rotulo, entrada) => {
+    await cnpj.consultar(entrada);
+
+    expect(axios.get).toHaveBeenCalledWith(
+      `https://api.opencnpj.org/${ALFANUMERICO}`,
+      OPCOES_AXIOS,
+    );
+  });
+
+  test("não confere o DV: a decisão fica com a API, como no CNPJ numérico", async () => {
+    await cnpj.consultar("12ABC34501DE99");
+
+    expect(axios.get).toHaveBeenCalledWith(
+      "https://api.opencnpj.org/12ABC34501DE99",
+      OPCOES_AXIOS,
+    );
+  });
+
+  test("caracteres fora de [0-9A-Z] nunca chegam à URL", async () => {
+    await cnpj.consultar("12ABC345/../01DE?35#").catch(() => {});
+
+    expect(axios.get).toHaveBeenCalledWith(
+      `https://api.opencnpj.org/${ALFANUMERICO}`,
+      OPCOES_AXIOS,
+    );
+  });
+});
+
+describe("normalizarCnpj", () => {
+  test.each([
+    ["33.000.167/0001-01", PETROBRAS],
+    [33000167000101, PETROBRAS],
+    ["12.abc.345/01de-35", ALFANUMERICO],
+    [" 12 ABC 345 01DE 35 ", ALFANUMERICO],
+    ["--//..", ""],
+  ])("%p vira %p", (entrada, esperado) => {
+    expect(normalizarCnpj(entrada)).toBe(esperado);
+  });
+
+  test.each([[undefined], [null], [false], [{}]])(
+    "%p vira string vazia, não 'NULL' ou 'UNDEFINED'",
+    (entrada) => {
+      expect(normalizarCnpj(entrada)).toBe("");
+    },
+  );
+});
+
+describe("validarCnpj", () => {
+  test.each([
+    ["numérico (Petrobras)", PETROBRAS],
+    ["numérico formatado", "33.000.167/0001-01"],
+    ["numérico (Banco do Brasil)", "00.000.000/0001-91"],
+    ["alfanumérico oficial da Receita", ALFANUMERICO],
+    ["alfanumérico formatado e minúsculo", "12.abc.345/01de-35"],
+  ])("aceita %s", (_rotulo, entrada) => {
+    expect(validarCnpj(entrada)).toBe(true);
+  });
+
+  test.each([
+    ["numérico com DV errado", "33000167000102"],
+    ["alfanumérico com 1º DV errado", "12ABC34501DE45"],
+    ["alfanumérico com 2º DV errado", "12ABC34501DE36"],
+    ["letra no DV", "12ABC34501DE3A"],
+    ["tamanho errado", "12ABC34501DE3"],
+    ["sequência repetida", "00000000000000"],
+    ["vazio", ""],
+    ["null", null],
+  ])("recusa %s", (_rotulo, entrada) => {
+    expect(validarCnpj(entrada)).toBe(false);
+  });
+});
+
 describe("consultaCNPJ - alias depreciado", () => {
   test("consulta igual a consultar()", async () => {
     await expect(cnpj.consultaCNPJ(PETROBRAS)).resolves.toEqual(RESPOSTA);
@@ -206,6 +295,12 @@ describe("Formas de importar o pacote", () => {
     expect(pacote).toBe(Cnpj);
     expect(pacote.Cnpj).toBe(Cnpj);
     expect(new pacote()).toBeInstanceOf(Cnpj);
+  });
+
+  test("normalizarCnpj e validarCnpj são exportados", () => {
+    expect(pacote.normalizarCnpj).toBe(normalizarCnpj);
+    expect(pacote.validarCnpj).toBe(validarCnpj);
+    expect(pacote.validarCnpj(ALFANUMERICO)).toBe(true);
   });
 
   test("as classes de erro são exportadas", () => {
