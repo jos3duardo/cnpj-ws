@@ -3,6 +3,52 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento conforme [SemVer](https://semver.org/lang/pt-BR/).
 
+## [3.2.0] - 2026-10-17
+
+Release aditivo: nenhuma API existente foi removida.
+
+### Adicionado
+
+- Suporte ao **CNPJ alfanumérico** da Receita Federal (emitido desde jul/2026):
+  12 caracteres `[0-9A-Z]` seguidos de 2 dígitos verificadores numéricos.
+  `consultar("12.ABC.345/01DE-35")` normaliza para `12ABC34501DE35` e consulta.
+  A OpenCNPJ já aceita o formato (contrato documentado no repositório
+  `hitmasu/opencnpj`; testado ao vivo: CNPJ alfanumérico sem cadastro devolve
+  404, não 400).
+- `validarCnpj(cnpj)`: confere formato e dígitos verificadores, numéricos ou
+  alfanuméricos, pelo módulo 11 com valor ASCII − 48 por caractere, conforme as
+  [Perguntas e Respostas da Receita](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/cnpj/cnpj-alfanumerico.pdf)
+  (pergunta 14). Recusa sequência de um caractere só (`00000000000000`).
+- `normalizarCnpj(cnpj)`: maiúsculas e só `[0-9A-Z]`; entrada que não é string,
+  número ou bigint vira `""`.
+- Limite de tamanho da resposta: `maxContentLength` e `maxBodyLength` de 256 KiB
+  por padrão, configuráveis com `new Cnpj({ maxContentLength })` (`-1` desliga).
+- Redirecionamentos não são seguidos (`maxRedirects: 0`, configurável): um 3xx
+  vira `ErroConsulta` com o status real e a consulta nunca sai do host
+  configurado.
+- `__tests__/limites.test.js`: tamanho, redirect e timeout testados com o axios
+  real contra um servidor HTTP local, sem internet.
+
+### Alterado
+
+- Letras na entrada deixaram de ser descartadas: passam a contar como parte do
+  CNPJ. Uma entrada como `"33000167000101X"`, que antes virava `33000167000101`
+  e era consultada, agora é recusada com `ErroValidacao` (15 caracteres).
+- A mensagem de tamanho inválido diz "caracteres" em vez de "dígitos".
+- Letra nas duas últimas posições é recusada com `ErroValidacao` específico
+  ("os dois últimos caracteres (dígitos verificadores) devem ser numéricos").
+
+### Notas de comportamento
+
+`consultar()` confere o **formato**, não o dígito verificador — como na 3.1.0,
+um CNPJ de 14 caracteres com DV errado vai à API e volta como `ErroConsulta`
+404. Para recusar localmente, chame `validarCnpj()` antes. Fazer isso dentro de
+`consultar()` mudaria o erro devolvido e fica para a 4.0.0.
+
+Com o limite de tamanho, uma resposta acima de 256 KiB rejeita com o erro
+original do axios (`maxContentLength size of ... exceeded`), como as demais
+falhas de transporte.
+
 ## [3.1.0] - 2026-09-23
 
 Release aditivo: nenhuma API existente foi removida.
