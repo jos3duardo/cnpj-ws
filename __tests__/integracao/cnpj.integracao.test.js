@@ -39,6 +39,15 @@ describe("Integração com a API OpenCNPJ", () => {
     expect(resultado.cnpj).toBe(PETROBRAS);
   });
 
+  // A OpenCNPJ aceita o formato alfanumérico (responde 404, não 400, para um
+  // CNPJ válido sem cadastro). Trocar por um CNPJ alfanumérico real quando
+  // houver um público conhecido.
+  test("aceita o formato alfanumérico (exemplo da Receita, sem cadastro)", async () => {
+    await expect(cnpj.consultar("12.ABC.345/01DE-35")).rejects.toMatchObject({
+      Erro: 404,
+    });
+  });
+
   test("rejeita CNPJ inexistente com 404", async () => {
     await expect(cnpj.consultar("00000000000000")).rejects.toMatchObject({
       Erro: 404,

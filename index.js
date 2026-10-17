@@ -1,4 +1,11 @@
-const { Cnpj, ErroCnpj, ErroValidacao, ErroConsulta } = require("./lib/cnpj");
+const {
+  Cnpj,
+  ErroCnpj,
+  ErroValidacao,
+  ErroConsulta,
+  normalizarCnpj,
+  validarCnpj,
+} = require("./lib/cnpj");
 
 const instanciaPadrao = new Cnpj();
 
@@ -12,6 +19,8 @@ module.exports.Cnpj = Cnpj;
 module.exports.ErroCnpj = ErroCnpj;
 module.exports.ErroValidacao = ErroValidacao;
 module.exports.ErroConsulta = ErroConsulta;
+module.exports.normalizarCnpj = normalizarCnpj;
+module.exports.validarCnpj = validarCnpj;
 
 // Uso sem `new`: require("consulta-cnpj-ws").consultar("33000167000101")
 module.exports.consultar = (cnpj) => instanciaPadrao.consultar(cnpj);

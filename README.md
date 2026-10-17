@@ -48,10 +48,35 @@ consultar("33000167000101")
 consultar("33000167000101"); // string
 consultar(33000167000101); // número
 consultar("33.000.167/0001-01"); // formatado
+consultar("12.ABC.345/01DE-35"); // alfanumérico (desde jul/2026)
+consultar("12abc34501de35"); // minúsculas são convertidas
 ```
 
-Entrada que não resulte em exatamente 14 dígitos é rejeitada localmente, sem
-gastar uma chamada à API.
+Entrada que não resulte em exatamente 14 caracteres — 12 em `[0-9A-Z]` mais 2
+dígitos verificadores numéricos, ou 14 dígitos depois de descartar o resto, como
+na 3.1.0 — é rejeitada localmente, sem gastar uma chamada
+à API. O dígito verificador **não** é conferido por `consultar()`; use
+`validarCnpj()` para isso.
+
+### CNPJ alfanumérico
+
+Desde julho de 2026 a Receita Federal emite CNPJ com letras nas 12 primeiras
+posições (raiz e ordem); os 2 dígitos verificadores continuam numéricos. CNPJs
+já existentes não mudam. A API OpenCNPJ aceita o novo formato.
+
+```javascript
+const { validarCnpj, normalizarCnpj } = require("consulta-cnpj-ws");
+
+validarCnpj("12.ABC.345/01DE-35"); // true  (exemplo oficial da Receita)
+validarCnpj("12.ABC.345/01DE-36"); // false (DV errado)
+validarCnpj("33.000.167/0001-01"); // true  (numérico continua valendo)
+
+normalizarCnpj("12.abc.345/01de-35"); // "12ABC34501DE35"
+```
+
+O DV segue o módulo 11 da Receita, com cada caractere valendo seu código ASCII
+menos 48 (`0`–`9` mantêm o valor, `A` = 17 … `Z` = 42). Referência:
+[Perguntas e Respostas — CNPJ alfanumérico](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/cnpj/cnpj-alfanumerico.pdf), pergunta 14.
 
 ### Instância com opções
 
@@ -69,8 +94,10 @@ cliente.consultar("33000167000101").then((empresa) => {
 
 | Opção     | Padrão                             | Descrição                            |
 | --------- | ---------------------------------- | ------------------------------------ |
-| `timeout` | `10000`                            | Timeout da requisição em ms; `0` desliga |
+| `timeout` | `10000`                            | Prazo total da consulta em ms; `0` desliga |
 | `url`     | `https://api.opencnpj.org/{CNPJ}`  | Template de URL; precisa conter `{CNPJ}` |
+| `maxContentLength` | `262144` (256 KiB)        | Tamanho máximo da resposta; `-1` desliga |
+| `maxRedirects` | `0`                           | Redirecionamentos seguidos; 3xx vira `ErroConsulta` |
 
 ### TypeScript
 
@@ -127,10 +154,11 @@ Error
 | Situação                        | Rejeita com                                         |
 | ------------------------------- | --------------------------------------------------- |
 | CNPJ não informado, `null`, `""` | `ErroValidacao`                                     |
-| CNPJ sem 14 dígitos             | `ErroValidacao` informando quantos dígitos vieram   |
+| CNPJ sem 14 caracteres          | `ErroValidacao` informando quantos vieram           |
+| Letra no dígito verificador     | `ErroValidacao`                                     |
 | CNPJ não encontrado (404)       | `ErroConsulta` com `Erro: 404`                       |
-| Outro erro HTTP                 | `ErroConsulta` com o status real (429, 500, …)      |
-| Falha de rede ou timeout        | O erro original do axios                             |
+| Outro erro HTTP ou redirect     | `ErroConsulta` com o status real (302, 429, 500, …) |
+| Falha de rede, timeout ou resposta acima do limite | O erro original do axios          |
 
 ## 📄 Resposta
 
@@ -180,7 +208,7 @@ Exemplo para o CNPJ da **Petrobras** (33.000.167/0001-01):
 
 | Campo                          | Tipo    | Descrição                                          |
 | ------------------------------ | ------- | -------------------------------------------------- |
-| `cnpj`                         | string  | CNPJ sem formatação (apenas números)               |
+| `cnpj`                         | string  | CNPJ sem formatação (números, ou letras e números no alfanumérico) |
 | `razao_social`                 | string  | Razão social da empresa                            |
 | `nome_fantasia`                | string  | Nome fantasia                                      |
 | `situacao_cadastral`           | string  | Situação cadastral (Ativa, Baixada, Suspensa, etc) |
@@ -239,7 +267,7 @@ Veja o [CHANGELOG](./CHANGELOG.md) para a lista completa de mudanças.
 ## 🧪 Desenvolvimento
 
 ```bash
-npm test                  # testes unitários (axios mockado, sem rede)
+npm test                  # unitários (axios mockado) e limites (servidor local), sem internet
 npm run test:watch
 npm run test:coverage
 npm run test:integration  # bate na API real; não roda no CI

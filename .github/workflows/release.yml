@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-          cache: npm
+          # Sem cache: o job que publica não restaura nada que outro job possa ter gravado.
 
       # A tag é o que dispara o release: divergir do package.json publicaria a versão errada.
       # No ensaio não há tag: GITHUB_REF_NAME seria o nome do branch.

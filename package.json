@@ -1,6 +1,6 @@
 {
   "name": "consulta-cnpj-ws",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
   "main": "index.js",
   "types": "index.d.ts",
@@ -59,6 +59,8 @@
     "inscrição estadual",
     "registro empresarial",
     "validação CNPJ",
+    "CNPJ alfanumérico",
+    "alphanumeric cnpj",
     "formatar CNPJ",
     "parser CNPJ",
     "CNPJ lookup",
