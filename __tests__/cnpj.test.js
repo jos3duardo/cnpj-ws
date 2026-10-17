@@ -16,7 +16,12 @@ const PETROBRAS = "33000167000101";
 const ALFANUMERICO = "12ABC34501DE35";
 const URL_PADRAO = "https://api.opencnpj.org/{CNPJ}";
 const TIMEOUT_PADRAO = 10000;
-const OPCOES_AXIOS = { timeout: TIMEOUT_PADRAO };
+const OPCOES_AXIOS = {
+  timeout: TIMEOUT_PADRAO,
+  maxContentLength: 256 * 1024,
+  maxBodyLength: 256 * 1024,
+  maxRedirects: 0,
+};
 
 const RESPOSTA = {
   cnpj: PETROBRAS,
@@ -50,6 +55,24 @@ describe("Construtor", () => {
 
     expect(custom.urlApiCnpj).toBe("https://exemplo.test/{CNPJ}");
     expect(custom.timeout).toBe(500);
+  });
+
+  test("limita a resposta a 256 KiB e não segue redirect por padrão", () => {
+    expect(cnpj.maxContentLength).toBe(256 * 1024);
+    expect(cnpj.maxRedirects).toBe(0);
+  });
+
+  test("maxContentLength e maxRedirects são configuráveis", async () => {
+    await new Cnpj({ maxContentLength: 1000, maxRedirects: 2 }).consultar(
+      PETROBRAS,
+    );
+
+    expect(axios.get).toHaveBeenCalledWith(expect.any(String), {
+      timeout: TIMEOUT_PADRAO,
+      maxContentLength: 1000,
+      maxBodyLength: 1000,
+      maxRedirects: 2,
+    });
   });
 
   test("timeout 0 é respeitado (axios trata como sem timeout)", () => {

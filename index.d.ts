@@ -5,6 +5,10 @@ declare class Cnpj {
   urlApiCnpj: string;
   /** Timeout das requisições, em milissegundos. */
   timeout: number;
+  /** Tamanho máximo da resposta, em bytes. */
+  maxContentLength: number;
+  /** Redirecionamentos seguidos; `0` não segue nenhum. */
+  maxRedirects: number;
 
   constructor(opcoes?: Cnpj.OpcoesCnpj);
 
@@ -71,6 +75,10 @@ declare namespace Cnpj {
     url?: string;
     /** Timeout da requisição em milissegundos. Padrão: 10000. `0` desliga. */
     timeout?: number;
+    /** Tamanho máximo da resposta em bytes. Padrão: 262144 (256 KiB). `-1` desliga. */
+    maxContentLength?: number;
+    /** Redirecionamentos seguidos. Padrão: `0` (nenhum). */
+    maxRedirects?: number;
   }
 
   /** Base de todo erro originado nesta biblioteca. */
