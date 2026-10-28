@@ -28,22 +28,11 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:integration": "jest --config jest.integracao.config.js",
-    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts && tsc --noEmit --strict --module node16 --moduleResolution node16 __tests__/esm/uso.mts",
-    "test:esm": "node --test __tests__/esm/uso.test.mjs"
-  },
-  "jest": {
-    "testMatch": [
-      "**/__tests__/**/*.test.js"
-    ],
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/__tests__/integracao/"
-    ],
-    "clearMocks": true
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "test:coverage": "node --test --experimental-test-coverage",
+    "test:integration": "node --test __tests__/integracao/cnpj.integracao.js",
+    "test:types": "tsc --noEmit --strict --esModuleInterop --target es2022 --module commonjs --lib es2022,dom __tests__/tipos/uso.ts && tsc --noEmit --strict --module node16 --moduleResolution node16 --lib es2022,dom __tests__/esm/uso.mts"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -72,7 +61,6 @@
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "jest": "^29.7.0",
     "typescript": "^5.9.3"
   },
   "homepage": "https://github.com/jos3duardo/cnpj-ws#readme"

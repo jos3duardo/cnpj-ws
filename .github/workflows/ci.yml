@@ -18,6 +18,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Rede de segurança: teste que trava não segura o job por 6 h.
+    timeout-minutes: 10
 
     strategy:
       fail-fast: false
@@ -35,8 +37,6 @@ jobs:
       - run: npm ci
 
       - run: npm test
-
-      - run: npm run test:esm
 
       # O resultado depende só da versão do TypeScript, não da do Node.
       - name: Verifica os tipos publicados

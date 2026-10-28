@@ -1,5 +1,5 @@
 // Prova o pacote importado como ESM, pelo nome, como o usuário importa.
-// Roda com `npm run test:esm` (node:test; o Jest daqui é CommonJS).
+// Roda com `npm run test:esm`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

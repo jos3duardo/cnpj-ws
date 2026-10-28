@@ -12,12 +12,11 @@ Documentação, nomes de função e mensagens de erro são em português do Bras
 
 ```bash
 npm test                      # unitários (fetch mockado) e limites (servidor local), sem rede
-npm run test:esm              # o pacote importado como ESM, com node:test
 npm run test:watch
-npm run test:coverage
+npm run test:coverage         # --experimental-test-coverage do node:test
 npm run test:types            # valida index.d.ts com tsc --strict
-npm run test:integration      # bate na API real; config própria, fora do CI
-npx jest -t "nome do teste"   # um teste isolado
+npm run test:integration      # bate na API real; fora do npm test e do CI
+node --test --test-name-pattern="nome do teste" __tests__/cnpj.test.js   # um teste isolado
 
 node examples/consulta-simples.js
 node examples/consulta-completa.js
@@ -27,7 +26,7 @@ node examples/consulta-completa.js
 
 - `lib/cnpj.js` — toda a lógica. Exporta **um objeto simples**: `{ Cnpj, ErroCnpj, ErroValidacao, ErroConsulta, ErroTransporte, normalizarCnpj, validarCnpj }`. Não sabe nada sobre como o pacote é publicado.
 - `index.js` — **único dono da superfície pública**. Faz `module.exports = Cnpj` (a classe é o export principal desde a 2.x) e anexa nela os demais nomes, delegando a uma instância padrão. É isso que permite `new Cnpj()`, `pacote.consultar()` e `const { consultar } = require(...)` ao mesmo tempo. Nome público novo se adiciona **aqui**, não em `lib/`.
-- `index.mjs` / `index.d.mts` — entrada ESM. `index.mjs` é só `export *` do `index.js`: o Node detecta os nomes porque eles são atribuídos como `module.exports.X =` — manter essa forma (atribuição dinâmica ou `Object.assign` escondem o nome do ESM; `test:esm` compara os dois lados). Mesma classe e mesma instância padrão: sem dual package hazard. Nome público novo entra no `index.d.mts` (como `export import`).
+- `index.mjs` / `index.d.mts` — entrada ESM. `index.mjs` é só `export *` do `index.js`: o Node detecta os nomes porque eles são atribuídos como `module.exports.X =` — manter essa forma (atribuição dinâmica ou `Object.assign` escondem o nome do ESM; `__tests__/esm/uso.test.mjs` compara os dois lados). Mesma classe e mesma instância padrão: sem dual package hazard. Nome público novo entra no `index.d.mts` (como `export import`).
 - `index.d.ts` — tipos mantidos à mão, sem geração automática. Mudou a API pública, atualizar aqui junto; `npm run test:types` roda `tsc --strict` sobre `__tests__/tipos/uso.ts`, que exercita os padrões de uso do README.
 
 ## Contrato público (mudar = breaking change)
@@ -72,14 +71,14 @@ DV: módulo 11 com valor `charCodeAt - 48` por caractere (dígito mantém o valo
 
 ## Testes
 
-Suítes deliberadamente separadas:
+Runner nativo `node:test` + `node:assert/strict`, sem dependência de teste. `npm test` é `node --test` sem argumentos: o runner descobre `*.test.js`/`*.test.mjs` sozinho (no 18, 20 e 22), então arquivo de teste novo entra só pelo nome.
 
-- `__tests__/cnpj.test.js` — unitário, `global.fetch = jest.fn()` devolvendo `Response` de verdade. É o que roda no `npm test` e no CI. Teste novo entra aqui.
-- `__tests__/limites.test.js` — `fetch` de verdade contra servidor HTTP local (sem internet): tamanho de resposta, redirect, timeout (inclusive corpo pingado). Também roda no `npm test`.
-- `__tests__/esm/` — `uso.test.mjs` (node:test, `npm run test:esm`) importa o pacote pelo nome via `exports`; `uso.mts` é só para o `tsc` com `--module node16`. O Jest daqui é CommonJS, por isso ficam fora dele.
-- `__tests__/integracao/` — bate na API real, com `jest.integracao.config.js` próprio (`testTimeout` e `maxWorkers: 1` ficam lá). Fora do `npm test` porque depende de rede e do cadastro da Receita, que muda sem aviso.
+- `__tests__/cnpj.test.js` — unitário, `mock.method(globalThis, "fetch", ...)` devolvendo `Response` de verdade, restaurado no `afterEach`. Teste novo entra aqui.
+- `__tests__/limites.test.js` — `fetch` de verdade contra servidor HTTP local (sem internet): tamanho de resposta, redirect, timeout (inclusive corpo pingado).
+- `__tests__/esm/uso.test.mjs` — importa o pacote pelo nome via `exports` e compara os nomes do `require` e do `import`. `uso.mts` é só para o `tsc` com `--module node16`.
+- `__tests__/integracao/cnpj.integracao.js` — bate na API real, `npm run test:integration`. **Não termina em `.test.js` de propósito**, para o `npm test` não o descobrir: depende de rede e do cadastro da Receita, que muda sem aviso.
 
-A config inline do Jest no `package.json` ignora `/__tests__/integracao/`. Cuidado ao montar scripts do Jest por linha de comando: opções de array como `--testPathIgnorePatterns` engolem o argumento posicional seguinte — daí o arquivo de config separado em vez de flags.
+`mock.fn`/`mock.method` exigem Node 18.13+. `test:types` não usa `@types/node`: o `tsc` roda com `--target es2022 --lib es2022,dom` (o target padrão ES5 não tem `Promise`, e é o `dom` que declara o `fetch` usado em `index.d.ts`).
 
 ## Publicação
 

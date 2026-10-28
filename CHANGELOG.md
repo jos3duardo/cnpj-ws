@@ -3,6 +3,16 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento conforme [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Alterado
+
+- Os testes migraram do Jest para o runner nativo `node:test`, e o Jest saiu
+  das devDependencies — com ele, o `deepmerge` transitivo do alerta
+  GHSA-gcqx-w48m-w2h4. A única devDependency restante é o `typescript`. Sem
+  efeito no pacote publicado.
+- `npm test` passa a incluir o teste de ESM; o script `test:esm` saiu.
+
 ## [4.0.0] - 2026-10-28
 
 Major por causa do formato dos erros de transporte e do `exports`. A API de
