@@ -1,12 +1,27 @@
 {
   "name": "consulta-cnpj-ws",
-  "version": "3.2.0",
-  "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
+  "version": "4.0.0",
+  "description": "Consulta de CNPJ (numérico e alfanumérico) na base da Receita Federal via OpenCNPJ. Zero dependências, TypeScript, ESM e CommonJS.",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./index.d.mts",
+        "default": "./index.mjs"
+      },
+      "require": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "index.js",
+    "index.mjs",
     "index.d.ts",
+    "index.d.mts",
     "lib/",
     "README.md",
     "CHANGELOG.md",
@@ -17,7 +32,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:integration": "jest --config jest.integracao.config.js",
-    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts"
+    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts && tsc --noEmit --strict --module node16 --moduleResolution node16 __tests__/esm/uso.mts",
+    "test:esm": "node --test __tests__/esm/uso.test.mjs"
   },
   "jest": {
     "testMatch": [
@@ -41,51 +57,23 @@
   },
   "keywords": [
     "cnpj",
-    "receita federal",
-    "consulta CNPJ",
-    "Brasil",
-    "API Receita",
-    "Receita WS",
-    "webservice",
     "consulta cnpj",
-    "pesquisa cnpj",
-    "consulta cnpj receita",
-    "OpenCNPJ",
-    "CNPJ WS",
-    "CNPJ consulta",
-    "consulta de empresas",
-    "empresa brasileira",
-    "cadastro nacional",
-    "inscrição estadual",
-    "registro empresarial",
-    "validação CNPJ",
-    "CNPJ alfanumérico",
-    "alphanumeric cnpj",
-    "formatar CNPJ",
-    "parser CNPJ",
-    "CNPJ lookup",
-    "brazil cnpj",
-    "brazilian tax id",
-    "receita federal consulta",
-    "federal revenue",
-    "company lookup",
-    "business lookup",
-    "company registry",
-    "open data Brasil",
-    "public API",
-    "node module",
-    "npm package",
-    "axios client",
-    "webservice brasil",
-    "documentação API"
+    "cnpj alfanumérico",
+    "receita federal",
+    "opencnpj",
+    "validar cnpj",
+    "validação cnpj",
+    "empresa",
+    "brasil",
+    "brazil",
+    "cnpj lookup",
+    "brazilian company"
   ],
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
-  "dependencies": {
-    "axios": "^1.18.0"
-  },
   "devDependencies": {
     "jest": "^29.7.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "homepage": "https://github.com/jos3duardo/cnpj-ws#readme"
 }
