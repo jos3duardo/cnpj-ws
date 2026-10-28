@@ -395,12 +395,14 @@ Veja o [CHANGELOG](./CHANGELOG.md) para a lista completa de mudanças.
 
 ```bash
 npm test                  # unitários (fetch mockado) e limites (servidor local), sem internet
-npm run test:esm          # o pacote importado como ESM
 npm run test:watch
 npm run test:coverage
 npm run test:integration  # bate na API real; não roda no CI
 npm run test:types        # valida os tipos publicados com tsc
 ```
+
+Os testes usam o runner nativo do Node (`node:test`), sem framework de teste
+instalado.
 
 Exemplos executáveis em [`examples/`](https://github.com/jos3duardo/cnpj-ws/blob/master/examples):
 

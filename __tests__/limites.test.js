@@ -2,9 +2,16 @@
  * Limites de transporte com o `fetch` de verdade contra um servidor HTTP local:
  * tamanho de resposta, redirect e timeout. Sem internet — roda no `npm test`.
  */
+const { test, before, after, beforeEach } = require("node:test");
+const assert = require("node:assert/strict");
 const http = require("http");
 const zlib = require("zlib");
 const { Cnpj, ErroConsulta, ErroTransporte } = require("../lib/cnpj");
+
+// O node:test não tem timeout padrão (o Jest tinha 5 s): sem isto, uma
+// regressão no prazo da lib faz o teste de timeout esperar para sempre em vez
+// de falhar.
+const PRAZO = { timeout: 5000 };
 
 const PETROBRAS = "33000167000101";
 
@@ -13,7 +20,7 @@ let base;
 let rota;
 let caminhos;
 
-beforeAll(async () => {
+before(async () => {
   servidor = http.createServer((req, res) => {
     caminhos.push(req.url);
     rota(req, res);
@@ -22,7 +29,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${servidor.address().port}`;
 });
 
-afterAll(() => {
+after(() => {
   servidor.closeAllConnections();
   servidor.close();
 });
@@ -37,13 +44,11 @@ beforeEach(() => {
 
 const cliente = (opcoes = {}) => new Cnpj({ url: `${base}/{CNPJ}`, ...opcoes });
 
-test("resposta dentro do limite é entregue", async () => {
-  await expect(cliente().consultar(PETROBRAS)).resolves.toEqual({
-    cnpj: PETROBRAS,
-  });
+test("resposta dentro do limite é entregue", PRAZO, async () => {
+  assert.deepEqual(await cliente().consultar(PETROBRAS), { cnpj: PETROBRAS });
 });
 
-test("resposta acima de maxContentLength é recusada", async () => {
+test("resposta acima de maxContentLength é recusada", PRAZO, async () => {
   rota = (_req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ lixo: "x".repeat(5000) }));
@@ -53,11 +58,11 @@ test("resposta acima de maxContentLength é recusada", async () => {
     .consultar(PETROBRAS)
     .catch((e) => e);
 
-  expect(erro).toBeInstanceOf(ErroTransporte);
-  expect(erro.code).toBe("RESPOSTA_GRANDE_DEMAIS");
+  assert.ok(erro instanceof ErroTransporte);
+  assert.equal(erro.code, "RESPOSTA_GRANDE_DEMAIS");
 });
 
-test("o limite vale para o corpo recebido, mesmo sem Content-Length", async () => {
+test("o limite vale para o corpo recebido, mesmo sem Content-Length", PRAZO, async () => {
   rota = (_req, res) => {
     // Sem content-length o Node usa chunked: só a contagem pega o excesso.
     res.writeHead(200, { "content-type": "application/json" });
@@ -66,12 +71,13 @@ test("o limite vale para o corpo recebido, mesmo sem Content-Length", async () =
     res.end('"}');
   };
 
-  await expect(
+  await assert.rejects(
     cliente({ maxContentLength: 1000 }).consultar(PETROBRAS),
-  ).rejects.toMatchObject({ code: "RESPOSTA_GRANDE_DEMAIS" });
+    { code: "RESPOSTA_GRANDE_DEMAIS" },
+  );
 });
 
-test("com gzip, o limite vale para o corpo descomprimido, não o Content-Length", async () => {
+test("com gzip, o limite vale para o corpo descomprimido, não o Content-Length", PRAZO, async () => {
   // Corpo pequeno cujo gzip fica maior que o limite: tem de passar.
   const corpo = JSON.stringify({ cnpj: PETROBRAS });
   const comprimido = zlib.gzipSync(corpo);
@@ -85,13 +91,14 @@ test("com gzip, o limite vale para o corpo descomprimido, não o Content-Length"
   };
 
   const limite = corpo.length;
-  expect(comprimido.length).toBeGreaterThan(limite);
-  await expect(
-    cliente({ maxContentLength: limite }).consultar(PETROBRAS),
-  ).resolves.toEqual({ cnpj: PETROBRAS });
+  assert.ok(comprimido.length > limite);
+  assert.deepEqual(
+    await cliente({ maxContentLength: limite }).consultar(PETROBRAS),
+    { cnpj: PETROBRAS },
+  );
 });
 
-test("maxContentLength -1 desliga o limite", async () => {
+test("maxContentLength -1 desliga o limite", PRAZO, async () => {
   rota = (_req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ lixo: "x".repeat(300 * 1024) }));
@@ -99,21 +106,21 @@ test("maxContentLength -1 desliga o limite", async () => {
 
   const resultado = await cliente({ maxContentLength: -1 }).consultar(PETROBRAS);
 
-  expect(resultado.lixo).toHaveLength(300 * 1024);
+  assert.equal(resultado.lixo.length, 300 * 1024);
 });
 
-test("resposta acima do padrão de 256 KiB é recusada", async () => {
+test("resposta acima do padrão de 256 KiB é recusada", PRAZO, async () => {
   rota = (_req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ lixo: "x".repeat(300 * 1024) }));
   };
 
-  await expect(cliente().consultar(PETROBRAS)).rejects.toMatchObject({
+  await assert.rejects(cliente().consultar(PETROBRAS), {
     code: "RESPOSTA_GRANDE_DEMAIS",
   });
 });
 
-test("redirect não é seguido e vira ErroConsulta com o status real", async () => {
+test("redirect não é seguido e vira ErroConsulta com o status real", PRAZO, async () => {
   rota = (req, res) => {
     if (req.url === `/${PETROBRAS}`) {
       res.writeHead(302, { location: `${base}/outro-destino` });
@@ -125,12 +132,12 @@ test("redirect não é seguido e vira ErroConsulta com o status real", async () 
 
   const erro = await cliente().consultar(PETROBRAS).catch((e) => e);
 
-  expect(erro).toBeInstanceOf(ErroConsulta);
-  expect(erro.Erro).toBe(302);
-  expect(caminhos).toEqual([`/${PETROBRAS}`]);
+  assert.ok(erro instanceof ErroConsulta);
+  assert.equal(erro.Erro, 302);
+  assert.deepEqual(caminhos, [`/${PETROBRAS}`]);
 });
 
-test("com maxRedirects, segue até o limite e para no seguinte", async () => {
+test("com maxRedirects, segue até o limite e para no seguinte", PRAZO, async () => {
   rota = (req, res) => {
     const salto = Number(new URL(req.url, base).searchParams.get("salto"));
     if (salto < 3) {
@@ -141,32 +148,33 @@ test("com maxRedirects, segue até o limite e para no seguinte", async () => {
     res.end(JSON.stringify({ salto }));
   };
 
-  await expect(
-    cliente({ maxRedirects: 3 }).consultar(PETROBRAS),
-  ).resolves.toEqual({ salto: 3 });
+  assert.deepEqual(
+    await cliente({ maxRedirects: 3 }).consultar(PETROBRAS),
+    { salto: 3 },
+  );
 
   caminhos = [];
   const erro = await cliente({ maxRedirects: 2 })
     .consultar(PETROBRAS)
     .catch((e) => e);
 
-  expect(erro).toBeInstanceOf(ErroConsulta);
-  expect(erro.Erro).toBe(302);
-  expect(caminhos).toHaveLength(3);
+  assert.ok(erro instanceof ErroConsulta);
+  assert.equal(erro.Erro, 302);
+  assert.equal(caminhos.length, 3);
 });
 
-test("timeout interrompe a consulta", async () => {
+test("timeout interrompe a consulta", PRAZO, async () => {
   rota = () => {}; // nunca responde
 
   const erro = await cliente({ timeout: 50 })
     .consultar(PETROBRAS)
     .catch((e) => e);
 
-  expect(erro).toBeInstanceOf(ErroTransporte);
-  expect(erro.code).toBe("TEMPO_ESGOTADO");
+  assert.ok(erro instanceof ErroTransporte);
+  assert.equal(erro.code, "TEMPO_ESGOTADO");
 });
 
-test("conexão recusada vira ErroTransporte FALHA_DE_REDE", async () => {
+test("conexão recusada vira ErroTransporte FALHA_DE_REDE", PRAZO, async () => {
   const fechado = http.createServer();
   await new Promise((resolve) => fechado.listen(0, "127.0.0.1", resolve));
   const porta = fechado.address().port;
@@ -176,13 +184,12 @@ test("conexão recusada vira ErroTransporte FALHA_DE_REDE", async () => {
     .consultar(PETROBRAS)
     .catch((e) => e);
 
-  expect(erro).toBeInstanceOf(ErroTransporte);
-  expect(erro.code).toBe("FALHA_DE_REDE");
-  // O TypeError do undici vem de outro realm: instanceof falha sob o Jest.
-  expect(erro.cause).toMatchObject({ name: "TypeError" });
+  assert.ok(erro instanceof ErroTransporte);
+  assert.equal(erro.code, "FALHA_DE_REDE");
+  assert.ok(erro.cause instanceof TypeError);
 });
 
-test("timeout é prazo total: corpo pingado byte a byte não o estende", async () => {
+test("timeout é prazo total: corpo pingado byte a byte não o estende", PRAZO, async () => {
   let intervalo;
   rota = (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
@@ -197,7 +204,7 @@ test("timeout é prazo total: corpo pingado byte a byte não o estende", async (
     .catch((e) => e);
   clearInterval(intervalo);
 
-  expect(erro).toBeInstanceOf(ErroTransporte);
-  expect(erro.code).toBe("TEMPO_ESGOTADO");
-  expect(Date.now() - inicio).toBeLessThan(1000);
+  assert.ok(erro instanceof ErroTransporte);
+  assert.equal(erro.code, "TEMPO_ESGOTADO");
+  assert.ok(Date.now() - inicio < 1000);
 });
