@@ -32,10 +32,11 @@ consulta (`consultar`, `Cnpj`, `validarCnpj`, `normalizarCnpj`) não mudou.
 - **Breaking:** falha de rede, timeout, resposta acima do limite e corpo que não
   é JSON rejeitam com `ErroTransporte`, não mais com o erro do axios. Quem
   testava `erro.code === "ECONNABORTED"` ou `erro.response` precisa migrar.
-- **Breaking:** proxy por variável de ambiente (`HTTPS_PROXY`, `HTTP_PROXY`,
-  `NO_PROXY`) deixa de ser lido: o axios lia, o `fetch` nativo não. Atrás de
-  proxy, use a nova opção `fetch` com o `ProxyAgent` do `undici` (exemplo no
-  README).
+- **Breaking:** proxy por variável de ambiente (`HTTPS_PROXY`, `HTTP_PROXY` e
+  `NO_PROXY`) deixa de ser lido por padrão: o axios lia, o `fetch` nativo não.
+  No Node 22.21+ ou 24+, `NODE_USE_ENV_PROXY=1` reativa a leitura sem mudar
+  código; em qualquer versão, a nova opção `fetch` aceita o `ProxyAgent` do
+  `undici` (exemplo no README).
 - **Breaking:** opções do construtor são validadas. `timeout`, `maxContentLength`
   e `maxRedirects` precisam ser inteiros na faixa (`timeout` até 2³¹−1, teto do
   `setTimeout`), e a URL precisa ser `http(s)` absoluta. Antes, `timeout: "5000"`
@@ -51,8 +52,9 @@ consulta (`consultar`, `Cnpj`, `validarCnpj`, `normalizarCnpj`) não mudou.
   `ErroTransporte` `RESPOSTA_INVALIDA`. Corpo vazio (204, ou 200 sem conteúdo)
   também, com a mensagem "A API respondeu sem corpo.". BOM UTF-8 no início do
   JSON continua aceito.
-- O limite de `maxContentLength` é contado sobre os bytes recebidos, também
-  quando a resposta não traz `Content-Length`.
+- O limite de `maxContentLength` é contado sobre os bytes recebidos, já
+  descomprimidos, também quando a resposta não traz `Content-Length`. Com
+  `Content-Encoding`, o `Content-Length` (tamanho comprimido) é ignorado.
 - Com `maxRedirects` maior que zero, o redirect é seguido à mão (301, 302, 303,
   307 e 308) até o limite; passou dele, o 3xx vira `ErroConsulta`, como já
   acontecia com o padrão `0`. **Breaking:** só é seguido redirect para a mesma

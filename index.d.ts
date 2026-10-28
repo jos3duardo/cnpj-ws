@@ -81,7 +81,7 @@ declare namespace Cnpj {
     maxRedirects?: number;
     /**
      * `fetch` a usar no lugar do global. Útil atrás de proxy corporativo: o
-     * `fetch` nativo não lê `HTTPS_PROXY`.
+     * `fetch` nativo só lê `HTTPS_PROXY` com `NODE_USE_ENV_PROXY=1`.
      */
     fetch?: typeof fetch;
   }

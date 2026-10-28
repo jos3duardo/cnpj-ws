@@ -136,8 +136,14 @@ opção `fetch` e envie o cabeçalho `Authorization`.
 
 ### Atrás de proxy
 
-O `fetch` nativo do Node **não lê** `HTTPS_PROXY`/`HTTP_PROXY`. Atrás de proxy
-corporativo, injete um `fetch` com o dispatcher do `undici`:
+Por padrão o `fetch` nativo do Node **não lê** `HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY`
+(o axios lia). Duas saídas:
+
+- **Node 22.21+ ou 24+:** rode com `NODE_USE_ENV_PROXY=1` e o `fetch` nativo
+  passa a usar essas variáveis, sem mudar código.
+- **Qualquer versão:** injete um `fetch` com o `ProxyAgent` do `undici`, que
+  precisa ser instalado à parte (`npm install undici`, numa versão compatível
+  com o seu Node):
 
 ```javascript
 const { fetch, ProxyAgent } = require("undici");
@@ -331,8 +337,9 @@ A API de consulta não mudou. O que muda:
   é exportado pela raiz.
 - **`axios` saiu das dependências.** Se o seu projeto usava o `axios` que vinha
   junto, declare-o no seu `package.json`.
-- **Proxy por variável de ambiente deixa de valer.** O axios lia `HTTPS_PROXY`;
-  o `fetch` nativo não. Veja [Atrás de proxy](#atrás-de-proxy).
+- **Proxy por variável de ambiente deixa de valer por padrão.** O axios lia
+  `HTTPS_PROXY`; o `fetch` nativo só lê com `NODE_USE_ENV_PROXY=1` (Node 22.21+
+  ou 24+). Veja [Atrás de proxy](#atrás-de-proxy).
 - **`consultaCNPJ()` segue depreciado** (desde a 3.1.0). Troque por
   `consultar()`. Diferença entre os dois: com CNPJ ausente, `consultaCNPJ()`
   lança de forma **síncrona** (só `try/catch` captura) e `consultar()` **rejeita
