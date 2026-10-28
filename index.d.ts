@@ -18,7 +18,7 @@ declare class Cnpj {
    */
   consultar: Cnpj.Consulta;
 
-  /** @deprecated desde 3.1.0 — use `consultar()`. Será removido na 4.0.0. */
+  /** @deprecated desde 3.1.0 — use `consultar()`. Será removido numa próxima major. */
   consultaCNPJ: Cnpj.Consulta;
 }
 
@@ -71,14 +71,19 @@ declare namespace Cnpj {
   }
 
   export interface OpcoesCnpj {
-    /** Template da URL; precisa conter o marcador `{CNPJ}`. */
+    /** Template da URL: http(s) absoluta, sem credencial, com o marcador `{CNPJ}`. */
     url?: string;
-    /** Timeout da requisição em milissegundos. Padrão: 10000. `0` desliga. */
+    /** Prazo total da consulta em milissegundos. Padrão: 10000. `0` desliga. */
     timeout?: number;
     /** Tamanho máximo da resposta em bytes. Padrão: 262144 (256 KiB). `-1` desliga. */
     maxContentLength?: number;
-    /** Redirecionamentos seguidos. Padrão: `0` (nenhum). */
+    /** Redirecionamentos seguidos, só para a mesma origem da `url`. Padrão: `0`. */
     maxRedirects?: number;
+    /**
+     * `fetch` a usar no lugar do global. Útil atrás de proxy corporativo: o
+     * `fetch` nativo não lê `HTTPS_PROXY`.
+     */
+    fetch?: typeof fetch;
   }
 
   /** Base de todo erro originado nesta biblioteca. */
@@ -97,6 +102,25 @@ declare namespace Cnpj {
     constructor(status: number, mensagem: string);
   }
 
+  /** Motivo de uma falha de transporte. */
+  export type CodigoTransporte =
+    | "TEMPO_ESGOTADO"
+    | "FALHA_DE_REDE"
+    | "RESPOSTA_GRANDE_DEMAIS"
+    | "RESPOSTA_INVALIDA";
+
+  /**
+   * A consulta não chegou a uma resposta HTTP utilizável: rede, prazo esgotado,
+   * resposta grande demais ou que não é JSON.
+   */
+  export class ErroTransporte extends ErroCnpj {
+    code: CodigoTransporte;
+    /** Erro original do `fetch` ou do `JSON.parse`, quando há. */
+    cause?: unknown;
+
+    constructor(codigo: CodigoTransporte, mensagem: string, causa?: unknown);
+  }
+
   /**
    * Normaliza um CNPJ numérico ou alfanumérico: maiúsculas, só `[0-9A-Z]`.
    * Não valida; entrada que não é string nem número vira `""`.
@@ -112,7 +136,7 @@ declare namespace Cnpj {
   /** Consulta um CNPJ usando a instância padrão. */
   export const consultar: Consulta;
 
-  /** @deprecated desde 3.1.0 — use `consultar()`. Será removido na 4.0.0. */
+  /** @deprecated desde 3.1.0 — use `consultar()`. Será removido numa próxima major. */
   export const consultaCNPJ: Consulta;
 
   export const Cnpj: new (opcoes?: OpcoesCnpj) => import("./index");

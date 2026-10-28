@@ -1,11 +1,9 @@
-jest.mock("axios");
-
-const axios = require("axios");
 const {
   Cnpj,
   ErroCnpj,
   ErroValidacao,
   ErroConsulta,
+  ErroTransporte,
   normalizarCnpj,
   validarCnpj,
 } = require("../lib/cnpj");
@@ -16,11 +14,9 @@ const PETROBRAS = "33000167000101";
 const ALFANUMERICO = "12ABC34501DE35";
 const URL_PADRAO = "https://api.opencnpj.org/{CNPJ}";
 const TIMEOUT_PADRAO = 10000;
-const OPCOES_AXIOS = {
-  timeout: TIMEOUT_PADRAO,
-  maxContentLength: 256 * 1024,
-  maxBodyLength: 256 * 1024,
-  maxRedirects: 0,
+const OPCOES_FETCH = {
+  headers: { accept: "application/json" },
+  redirect: "manual",
   signal: expect.any(AbortSignal),
 };
 
@@ -31,10 +27,11 @@ const RESPOSTA = {
   uf: "RJ",
 };
 
-/** Simula uma resposta HTTP de erro do axios (com `response`). */
-function erroHttp(status) {
-  return Object.assign(new Error(`Request failed with status code ${status}`), {
-    response: { status },
+/** Resposta HTTP de verdade; o corpo só pode ser lido uma vez. */
+function resposta(status, corpo = RESPOSTA) {
+  return new Response(JSON.stringify(corpo), {
+    status,
+    headers: { "content-type": "application/json" },
   });
 }
 
@@ -42,7 +39,7 @@ let cnpj;
 
 beforeEach(() => {
   cnpj = new Cnpj();
-  axios.get.mockResolvedValue({ data: RESPOSTA });
+  global.fetch = jest.fn(async () => resposta(200));
 });
 
 describe("Construtor", () => {
@@ -63,28 +60,21 @@ describe("Construtor", () => {
     expect(cnpj.maxRedirects).toBe(0);
   });
 
-  test("maxContentLength e maxRedirects são configuráveis", async () => {
-    await new Cnpj({ maxContentLength: 1000, maxRedirects: 2 }).consultar(
-      PETROBRAS,
-    );
+  test("maxContentLength e maxRedirects são configuráveis", () => {
+    const custom = new Cnpj({ maxContentLength: 1000, maxRedirects: 2 });
 
-    expect(axios.get).toHaveBeenCalledWith(expect.any(String), {
-      timeout: TIMEOUT_PADRAO,
-      maxContentLength: 1000,
-      maxBodyLength: 1000,
-      maxRedirects: 2,
-      signal: expect.any(AbortSignal),
-    });
+    expect(custom.maxContentLength).toBe(1000);
+    expect(custom.maxRedirects).toBe(2);
   });
 
-  test("timeout 0 é respeitado (axios trata como sem timeout)", () => {
+  test("timeout 0 é respeitado (sem prazo)", () => {
     expect(new Cnpj({ timeout: 0 }).timeout).toBe(0);
   });
 
   test("timeout 0 não cria signal de prazo total", async () => {
     await new Cnpj({ timeout: 0 }).consultar(PETROBRAS);
 
-    expect(axios.get.mock.calls[0][1]).not.toHaveProperty("signal");
+    expect(fetch.mock.calls[0][1]).not.toHaveProperty("signal");
   });
 
   test("url sem o marcador {CNPJ} falha na construção", () => {
@@ -98,10 +88,109 @@ describe("Construtor", () => {
       PETROBRAS,
     );
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       `https://exemplo.test/x/${PETROBRAS}.json`,
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
+  });
+});
+
+describe("Construtor - validação das opções", () => {
+  test.each([
+    ["sem esquema", "api.exemplo.test/{CNPJ}"],
+    ["ftp", "ftp://exemplo.test/{CNPJ}"],
+    ["data:", "data:application/json,{CNPJ}"],
+    ["com usuário e senha", "https://usuario:senha@exemplo.test/{CNPJ}"],
+  ])("recusa url %s, em vez de falhar como rede a cada consulta", (_r, url) => {
+    expect(() => new Cnpj({ url })).toThrow(ErroValidacao);
+  });
+
+  test.each([
+    ["fracionário", { timeout: 1.5 }],
+    ["string", { timeout: "5000" }],
+    ["acima do teto do setTimeout", { timeout: 2 ** 33 }],
+    ["negativo", { timeout: -1 }],
+    ["maxContentLength abaixo de -1", { maxContentLength: -2 }],
+    ["maxRedirects fracionário", { maxRedirects: 0.5 }],
+    ["fetch que não é função", { fetch: "nao" }],
+  ])("recusa opção inválida: %s", (_r, opcoes) => {
+    expect(() => new Cnpj(opcoes)).toThrow(ErroValidacao);
+  });
+
+  test("a mensagem de URL com credencial não repete a senha", () => {
+    expect(() => new Cnpj({ url: "https://u:senha123@exemplo.test/{CNPJ}" }))
+      .toThrow(expect.objectContaining({
+        message: expect.not.stringContaining("senha123"),
+      }));
+  });
+
+  test("urlApiCnpj alterada depois do construtor ainda é validada", async () => {
+    const mutada = new Cnpj();
+    mutada.urlApiCnpj = 'data:application/json,{"razao_social":"X"}{CNPJ}';
+
+    await expect(mutada.consultar(PETROBRAS)).rejects.toBeInstanceOf(
+      ErroValidacao,
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test("fetch injetado é usado no lugar do global", async () => {
+    const proprio = jest.fn(async () => resposta(200));
+
+    await new Cnpj({ fetch: proprio }).consultar(PETROBRAS);
+
+    expect(proprio).toHaveBeenCalledWith(
+      `https://api.opencnpj.org/${PETROBRAS}`,
+      OPCOES_FETCH,
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("consultar - redirect", () => {
+  /** 302 apontando para `destino`, com corpo vazio. */
+  const redirect = (destino) =>
+    new Response(null, { status: 302, headers: { location: destino } });
+
+  test.each([
+    ["data:", 'data:application/json,{"razao_social":"FORJADA"}'],
+    ["https → http", "http://api.opencnpj.org/outro"],
+    ["file:", "file:///etc/passwd"],
+    ["Location malformado", "http://[::1"],
+    ["outro host", "https://169.254.169.254/latest/meta-data/"],
+    ["mesmo host, outra porta", "https://api.opencnpj.org:8443/x"],
+  ])("não segue redirect para %s, mesmo com maxRedirects", async (_r, destino) => {
+    fetch.mockResolvedValueOnce(redirect(destino));
+
+    const erro = await new Cnpj({ maxRedirects: 5 })
+      .consultar(PETROBRAS)
+      .catch((e) => e);
+
+    expect(erro).toBeInstanceOf(ErroConsulta);
+    expect(erro.Erro).toBe(302);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("consultar - corpo da resposta", () => {
+  test("JSON com BOM UTF-8 é aceito, como no axios", async () => {
+    fetch.mockResolvedValue(
+      new Response("\uFEFF" + JSON.stringify(RESPOSTA)),
+    );
+
+    await expect(cnpj.consultar(PETROBRAS)).resolves.toEqual(RESPOSTA);
+  });
+
+  test.each([
+    ["204", () => new Response(null, { status: 204 })],
+    ["200 vazio", () => new Response("")],
+  ])("%s vira RESPOSTA_INVALIDA dizendo que veio sem corpo", async (_r, r) => {
+    fetch.mockResolvedValue(r());
+
+    await expect(cnpj.consultar(PETROBRAS)).rejects.toMatchObject({
+      code: "RESPOSTA_INVALIDA",
+      message: "A API respondeu sem corpo.",
+    });
   });
 });
 
@@ -114,13 +203,13 @@ describe("consultar - normalização da entrada", () => {
   ])("aceita CNPJ como %s", async (_rotulo, entrada) => {
     await cnpj.consultar(entrada);
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       `https://api.opencnpj.org/${PETROBRAS}`,
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
   });
 
-  test("retorna o corpo da resposta, não o envelope do axios", async () => {
+  test("retorna o corpo da resposta já convertido de JSON", async () => {
     await expect(cnpj.consultar(PETROBRAS)).resolves.toEqual(RESPOSTA);
   });
 });
@@ -134,7 +223,7 @@ describe("consultar - validação", () => {
     await expect(cnpj.consultar(entrada)).rejects.toThrow(
       "Você precisa informar um CNPJ valido",
     );
-    expect(axios.get).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -148,13 +237,13 @@ describe("consultar - validação", () => {
     ["false", false],
   ])("rejeita %s sem chamar a API", async (_rotulo, entrada) => {
     await expect(cnpj.consultar(entrada)).rejects.toThrow("CNPJ inválido");
-    expect(axios.get).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test("entrada inválida nunca vira requisição à raiz da API", async () => {
     await cnpj.consultar("abc").catch(() => {});
 
-    expect(axios.get).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test("rejeita com ErroValidacao, capturável por .catch()", async () => {
@@ -168,7 +257,7 @@ describe("consultar - validação", () => {
 
 describe("consultar - erros da API", () => {
   test("404 vira o erro documentado de CNPJ não encontrado", async () => {
-    axios.get.mockRejectedValue(erroHttp(404));
+    fetch.mockResolvedValue(resposta(404, {}));
 
     await expect(cnpj.consultar(PETROBRAS)).rejects.toMatchObject({
       Erro: 404,
@@ -178,7 +267,7 @@ describe("consultar - erros da API", () => {
   });
 
   test("status diferente de 404 preserva o status real", async () => {
-    axios.get.mockRejectedValue(erroHttp(500));
+    fetch.mockResolvedValue(resposta(500, {}));
 
     await expect(cnpj.consultar(PETROBRAS)).rejects.toMatchObject({
       Erro: 500,
@@ -187,7 +276,7 @@ describe("consultar - erros da API", () => {
   });
 
   test("o erro da API é um Error de verdade, não objeto literal", async () => {
-    axios.get.mockRejectedValue(erroHttp(429));
+    fetch.mockResolvedValue(resposta(429, {}));
 
     const erro = await cnpj.consultar(PETROBRAS).catch((e) => e);
 
@@ -197,13 +286,25 @@ describe("consultar - erros da API", () => {
     expect(erro.stack).toBeDefined();
   });
 
-  test("erro de rede (sem response) propaga o erro original", async () => {
-    const original = Object.assign(new Error("timeout"), {
-      code: "ECONNABORTED",
-    });
-    axios.get.mockRejectedValue(original);
+  test("erro de rede vira ErroTransporte com o erro original em cause", async () => {
+    const original = new TypeError("fetch failed");
+    fetch.mockRejectedValue(original);
 
-    await expect(cnpj.consultar(PETROBRAS)).rejects.toBe(original);
+    const erro = await cnpj.consultar(PETROBRAS).catch((e) => e);
+
+    expect(erro).toBeInstanceOf(ErroTransporte);
+    expect(erro).toBeInstanceOf(ErroCnpj);
+    expect(erro.code).toBe("FALHA_DE_REDE");
+    expect(erro.cause).toBe(original);
+  });
+
+  test("corpo que não é JSON vira ErroTransporte RESPOSTA_INVALIDA", async () => {
+    fetch.mockResolvedValue(new Response("<html>manutenção</html>"));
+
+    await expect(cnpj.consultar(PETROBRAS)).rejects.toMatchObject({
+      name: "ErroTransporte",
+      code: "RESPOSTA_INVALIDA",
+    });
   });
 });
 
@@ -215,27 +316,27 @@ describe("consultar - CNPJ alfanumérico", () => {
   ])("consulta %s com o valor normalizado", async (_rotulo, entrada) => {
     await cnpj.consultar(entrada);
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       `https://api.opencnpj.org/${ALFANUMERICO}`,
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
   });
 
   test("não confere o DV: a decisão fica com a API, como no CNPJ numérico", async () => {
     await cnpj.consultar("12ABC34501DE99");
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       "https://api.opencnpj.org/12ABC34501DE99",
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
   });
 
   test("caracteres fora de [0-9A-Z] nunca chegam à URL", async () => {
     await cnpj.consultar("12ABC345/../01DE?35#").catch(() => {});
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       `https://api.opencnpj.org/${ALFANUMERICO}`,
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
   });
 });
@@ -247,16 +348,16 @@ describe("consultar - compatibilidade com a 3.1.0", () => {
   ])("%s ainda consulta pelos dígitos", async (_rotulo, entrada) => {
     await cnpj.consultar(entrada);
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       `https://api.opencnpj.org/${PETROBRAS}`,
-      OPCOES_AXIOS,
+      OPCOES_FETCH,
     );
   });
 
   test("forma alfanumérica válida tem precedência sobre os dígitos", async () => {
     await cnpj.consultar("12.ABC.345/01DE-35");
 
-    expect(axios.get.mock.calls[0][0]).toBe(
+    expect(fetch.mock.calls[0][0]).toBe(
       `https://api.opencnpj.org/${ALFANUMERICO}`,
     );
   });
@@ -320,12 +421,12 @@ describe("consultaCNPJ - alias depreciado", () => {
     expect(() => cnpj.consultaCNPJ(entrada)).toThrow(
       "Você precisa informar um CNPJ valido",
     );
-    expect(axios.get).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test("lança de forma síncrona para formato inválido", () => {
     expect(() => cnpj.consultaCNPJ("12345")).toThrow("CNPJ inválido");
-    expect(axios.get).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -358,6 +459,7 @@ describe("Formas de importar o pacote", () => {
 
   test("as classes de erro são exportadas", () => {
     expect(pacote.ErroCnpj).toBe(ErroCnpj);
+    expect(pacote.ErroTransporte).toBe(ErroTransporte);
     expect(pacote.ErroValidacao).toBe(ErroValidacao);
     expect(pacote.ErroConsulta).toBe(ErroConsulta);
   });

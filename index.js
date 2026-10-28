@@ -3,6 +3,7 @@ const {
   ErroCnpj,
   ErroValidacao,
   ErroConsulta,
+  ErroTransporte,
   normalizarCnpj,
   validarCnpj,
 } = require("./lib/cnpj");
@@ -19,6 +20,7 @@ module.exports.Cnpj = Cnpj;
 module.exports.ErroCnpj = ErroCnpj;
 module.exports.ErroValidacao = ErroValidacao;
 module.exports.ErroConsulta = ErroConsulta;
+module.exports.ErroTransporte = ErroTransporte;
 module.exports.normalizarCnpj = normalizarCnpj;
 module.exports.validarCnpj = validarCnpj;
 

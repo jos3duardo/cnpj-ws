@@ -81,9 +81,6 @@
   ],
   "author": "José Eduardo <jos3duardolopes@gmail.com>",
   "license": "MIT",
-  "dependencies": {
-    "axios": "^1.18.0"
-  },
   "devDependencies": {
     "jest": "^29.7.0",
     "typescript": "^5.9.3"
