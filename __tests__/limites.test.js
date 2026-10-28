@@ -3,6 +3,7 @@
  * tamanho de resposta, redirect e timeout. Sem internet — roda no `npm test`.
  */
 const http = require("http");
+const zlib = require("zlib");
 const { Cnpj, ErroConsulta, ErroTransporte } = require("../lib/cnpj");
 
 const PETROBRAS = "33000167000101";
@@ -68,6 +69,26 @@ test("o limite vale para o corpo recebido, mesmo sem Content-Length", async () =
   await expect(
     cliente({ maxContentLength: 1000 }).consultar(PETROBRAS),
   ).rejects.toMatchObject({ code: "RESPOSTA_GRANDE_DEMAIS" });
+});
+
+test("com gzip, o limite vale para o corpo descomprimido, não o Content-Length", async () => {
+  // Corpo pequeno cujo gzip fica maior que o limite: tem de passar.
+  const corpo = JSON.stringify({ cnpj: PETROBRAS });
+  const comprimido = zlib.gzipSync(corpo);
+  rota = (_req, res) => {
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "content-encoding": "gzip",
+      "content-length": comprimido.length,
+    });
+    res.end(comprimido);
+  };
+
+  const limite = corpo.length;
+  expect(comprimido.length).toBeGreaterThan(limite);
+  await expect(
+    cliente({ maxContentLength: limite }).consultar(PETROBRAS),
+  ).resolves.toEqual({ cnpj: PETROBRAS });
 });
 
 test("maxContentLength -1 desliga o limite", async () => {

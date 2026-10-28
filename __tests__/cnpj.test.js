@@ -173,6 +173,17 @@ describe("consultar - redirect", () => {
 });
 
 describe("consultar - corpo da resposta", () => {
+  test("cancel do corpo que nunca termina não segura a consulta", async () => {
+    const corpoTravado = new ReadableStream({
+      cancel: () => new Promise(() => {}),
+    });
+    fetch.mockResolvedValue(new Response(corpoTravado, { status: 500 }));
+
+    await expect(cnpj.consultar(PETROBRAS)).rejects.toMatchObject({
+      Erro: 500,
+    });
+  });
+
   test("JSON com BOM UTF-8 é aceito, como no axios", async () => {
     fetch.mockResolvedValue(
       new Response("\uFEFF" + JSON.stringify(RESPOSTA)),
