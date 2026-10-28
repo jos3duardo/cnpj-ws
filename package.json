@@ -1,6 +1,6 @@
 {
   "name": "consulta-cnpj-ws",
-  "version": "3.2.0",
+  "version": "4.0.0",
   "description": "Consulta de CNPJ (numérico e alfanumérico) na base da Receita Federal via OpenCNPJ. Zero dependências, TypeScript, ESM e CommonJS.",
   "main": "index.js",
   "types": "index.d.ts",

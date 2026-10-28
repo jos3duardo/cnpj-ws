@@ -3,6 +3,75 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento conforme [SemVer](https://semver.org/lang/pt-BR/).
 
+## [4.0.0] - 2026-10-28
+
+Major por causa do formato dos erros de transporte e do `exports`. A API de
+consulta (`consultar`, `Cnpj`, `validarCnpj`, `normalizarCnpj`) não mudou.
+
+### Removido
+
+- Dependência do `axios`. A consulta usa o `fetch` nativo do Node 18+; o pacote
+  não tem mais nenhuma dependência de runtime.
+
+### Adicionado
+
+- Opção `fetch` no construtor, para injetar a implementação (proxy,
+  instrumentação, testes).
+- `ErroTransporte` (subclasse de `ErroCnpj`) para falha sem resposta HTTP
+  utilizável, com `code`: `TEMPO_ESGOTADO`, `FALHA_DE_REDE`,
+  `RESPOSTA_GRANDE_DEMAIS` ou `RESPOSTA_INVALIDA`. O erro original fica em
+  `cause`. Um `instanceof ErroCnpj` passa a cobrir tudo que a lib rejeita.
+- Entrada ESM (`index.mjs`) com tipos próprios (`index.d.mts`):
+  `import { consultar } from "consulta-cnpj-ws"`. Ela reexporta o CommonJS, então
+  `import` e `require` no mesmo processo recebem a mesma classe.
+- `npm run test:esm` no CI.
+- README: seção "Por que usar" e guia de migração da 2.x e da 3.x.
+
+### Alterado
+
+- **Breaking:** falha de rede, timeout, resposta acima do limite e corpo que não
+  é JSON rejeitam com `ErroTransporte`, não mais com o erro do axios. Quem
+  testava `erro.code === "ECONNABORTED"` ou `erro.response` precisa migrar.
+- **Breaking:** proxy por variável de ambiente (`HTTPS_PROXY`, `HTTP_PROXY`,
+  `NO_PROXY`) deixa de ser lido: o axios lia, o `fetch` nativo não. Atrás de
+  proxy, use a nova opção `fetch` com o `ProxyAgent` do `undici` (exemplo no
+  README).
+- **Breaking:** opções do construtor são validadas. `timeout`, `maxContentLength`
+  e `maxRedirects` precisam ser inteiros na faixa (`timeout` até 2³¹−1, teto do
+  `setTimeout`), e a URL precisa ser `http(s)` absoluta. Antes, `timeout: "5000"`
+  ou URL sem esquema só falhavam na consulta.
+- **Breaking:** URL com usuário e senha (`https://u:s@host/{CNPJ}`) é recusada
+  com `ErroValidacao`. O axios a convertia em autenticação básica; o `fetch`
+  nativo recusa, e o erro dele repetia a senha na mensagem. Para autenticar,
+  injete um `fetch` que envie o cabeçalho `Authorization`.
+- **Breaking:** campo `exports` no `package.json`. Só a raiz e
+  `consulta-cnpj-ws/package.json` são importáveis; `consulta-cnpj-ws/lib/cnpj`
+  deixa de funcionar (tudo dele é exportado pela raiz).
+- Corpo que não é JSON: o axios devolvia a string crua; agora é
+  `ErroTransporte` `RESPOSTA_INVALIDA`. Corpo vazio (204, ou 200 sem conteúdo)
+  também, com a mensagem "A API respondeu sem corpo.". BOM UTF-8 no início do
+  JSON continua aceito.
+- O limite de `maxContentLength` é contado sobre os bytes recebidos, também
+  quando a resposta não traz `Content-Length`.
+- Com `maxRedirects` maior que zero, o redirect é seguido à mão (301, 302, 303,
+  307 e 308) até o limite; passou dele, o 3xx vira `ErroConsulta`, como já
+  acontecia com o padrão `0`. **Breaking:** só é seguido redirect para a mesma
+  origem (esquema, host e porta) da URL configurada. O axios seguia para
+  qualquer host, e uma API comprometida podia apontar a consulta para um
+  endereço interno da rede de quem consulta; fora da origem, o 3xx vira
+  `ErroConsulta`.
+- A URL é validada também a cada consulta, não só no construtor:
+  `urlApiCnpj` é campo público e pode ser alterado depois.
+- `description` e `keywords` do `package.json` revistos para a busca do npm.
+
+### Mantido
+
+- `consultaCNPJ()` segue funcionando, depreciado. A remoção prevista para esta
+  versão fica para uma próxima major, para não somar duas quebras.
+- `consultar()` continua conferindo só o formato, não o dígito verificador. A
+  mudança anunciada na 3.2.0 também fica para uma próxima major; use
+  `validarCnpj()` antes de consultar para recusar DV inválido localmente.
+
 ## [3.2.0] - 2026-10-17
 
 Release aditivo: nenhuma API existente foi removida e toda entrada aceita pela
