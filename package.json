@@ -4,9 +4,24 @@
   "description": "Este é um pacote que fornece a consulta de CNPJ no sistema da Receita Federal Brasileira",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./index.d.mts",
+        "default": "./index.mjs"
+      },
+      "require": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "index.js",
+    "index.mjs",
     "index.d.ts",
+    "index.d.mts",
     "lib/",
     "README.md",
     "CHANGELOG.md",
@@ -17,7 +32,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:integration": "jest --config jest.integracao.config.js",
-    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts"
+    "test:types": "tsc --noEmit --strict --esModuleInterop __tests__/tipos/uso.ts && tsc --noEmit --strict --module node16 --moduleResolution node16 __tests__/esm/uso.mts",
+    "test:esm": "node --test __tests__/esm/uso.test.mjs"
   },
   "jest": {
     "testMatch": [

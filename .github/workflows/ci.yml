@@ -36,6 +36,8 @@ jobs:
 
       - run: npm test
 
+      - run: npm run test:esm
+
       # O resultado depende só da versão do TypeScript, não da do Node.
       - name: Verifica os tipos publicados
         if: matrix.node == 20
